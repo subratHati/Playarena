@@ -1,0 +1,31 @@
+# Render Blueprint for the PlayArena API.
+# Render → New → Blueprint → pick this repo. You'll be asked for the values marked sync: false.
+# The build runs from the repo root because the server imports ../shared.
+services:
+  - type: web
+    name: playarena-api
+    runtime: node
+    plan: starter # free instances sleep when idle, which drops live matches
+    region: singapore
+    buildCommand: cd server && npm ci --omit=dev
+    startCommand: cd server && npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NODE_VERSION
+        value: 22
+      - key: MONGO_URI
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: CLIENT_URL
+        sync: false
+      - key: ADMIN_EMAILS
+        sync: false
+      - key: CHECKIN_OPENS_MINUTES
+        value: 15
+      - key: NO_SHOW_SECONDS
+        value: 60
+      - key: RECONNECT_SECONDS
+        value: 30

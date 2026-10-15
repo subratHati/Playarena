@@ -1,0 +1,21 @@
+import mongoose from 'mongoose';
+
+// Mock payment record. Shaped like a gateway order so a real provider
+// (Razorpay, Cashfree, ...) can replace the mock confirm step later.
+const paymentSchema = new mongoose.Schema(
+  {
+    orderId: { type: String, required: true, unique: true },
+    user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+    tournament: { type: mongoose.Schema.Types.ObjectId, ref: 'Tournament', required: true },
+    amount: { type: Number, required: true }, // INR
+    currency: { type: String, default: 'INR' },
+    provider: { type: String, default: 'mock' },
+    method: { type: String, default: '' }, // upi / card / netbanking (mock)
+    status: { type: String, enum: ['created', 'paid', 'failed', 'refunded'], default: 'created' },
+    paidAt: { type: Date, default: null },
+    note: { type: String, default: '' },
+  },
+  { timestamps: true }
+);
+
+export default mongoose.model('Payment', paymentSchema);

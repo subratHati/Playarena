@@ -1,0 +1,115 @@
+import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { api, formatWhen, inr } from '../lib/api';
+import { GAME_LIST, GAMES } from '../lib/games';
+import GameArt from '../components/GameArt';
+import Countdown from '../components/Countdown';
+
+export default function Home() {
+  const [tournaments, setTournaments] = useState([]);
+  const [leaders, setLeaders] = useState([]);
+
+  useEffect(() => {
+    api('/tournaments?status=upcoming,live').then((d) => setTournaments(d.tournaments.slice(0, 4))).catch(() => {});
+    api('/leaderboard').then((d) => setLeaders(d.players.slice(0, 5))).catch(() => {});
+  }, []);
+
+  return (
+    <div className="space-y-14">
+      <section className="max-w-3xl">
+        <h1 className="text-4xl font-extrabold sm:text-6xl">Pick a game. Play a friend, a stranger, or the computer.</h1>
+        <p className="mt-4 max-w-xl text-lg text-muted">
+          Quick two-player games that start in seconds. When you want more at stake, book a seat in a scheduled
+          tournament.
+        </p>
+      </section>
+
+      <section aria-labelledby="games-h">
+        <h2 id="games-h" className="sr-only">
+          Games
+        </h2>
+        <ul className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          {GAME_LIST.map((g) => (
+            <li key={g.id} className="flex">
+              <Link
+                to={`/play/${g.id}`}
+                className="group flex w-full items-center gap-4 rounded-3xl border border-line bg-card p-3 transition-colors hover:border-ink sm:flex-col sm:items-stretch sm:p-4"
+              >
+                <GameArt gameId={g.id} className="aspect-square w-24 shrink-0 sm:w-full" />
+                <div className="flex flex-1 items-end justify-between gap-3 sm:px-1">
+                  <div>
+                    <h3 className="text-xl font-extrabold sm:text-2xl">{g.name}</h3>
+                    <p className="text-muted">{g.tagline}</p>
+                  </div>
+                  <span className={`shrink-0 rounded-full ${g.bg} px-4 py-2 font-bold text-white max-sm:hidden`}>Play</span>
+                </div>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </section>
+
+      <section className="grid gap-10 lg:grid-cols-[1fr_320px]">
+        <div>
+          <div className="mb-4 flex items-baseline justify-between gap-4">
+            <h2 className="text-3xl font-extrabold">Tournaments</h2>
+            <Link to="/tournaments" className="font-bold text-court underline-offset-4 hover:underline">
+              See all
+            </Link>
+          </div>
+          {tournaments.length === 0 ? (
+            <p className="panel p-6 text-muted">No tournaments are scheduled right now. Check back soon.</p>
+          ) : (
+            <ul className="panel divide-y divide-line">
+              {tournaments.map((t) => (
+                <li key={t.id}>
+                  <Link to={`/tournaments/${t.id}`} className="flex flex-wrap items-center gap-x-4 gap-y-1 p-4 hover:bg-chalk/60">
+                    <span className={`h-10 w-1.5 rounded-full ${GAMES[t.gameId].bg}`} aria-hidden />
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate font-bold">{t.title}</div>
+                      <div className="text-sm text-muted">
+                        {t.gameName}, {formatWhen(t.startsAt)}
+                      </div>
+                    </div>
+                    <div className="text-right text-sm">
+                      {t.status === 'live' ? (
+                        <span className="font-bold text-lose">Live now</span>
+                      ) : (
+                        <span>
+                          Starts in <Countdown to={t.startsAt} compact />
+                        </span>
+                      )}
+                      <div className="text-muted">
+                        {inr(t.entryFee)}, {t.seatsLeft} seats left
+                      </div>
+                    </div>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+
+        <aside>
+          <h2 className="mb-4 text-3xl font-extrabold">Leaderboard</h2>
+          {leaders.length === 0 ? (
+            <p className="panel p-6 text-muted">Win a match to get on the board.</p>
+          ) : (
+            <ol className="panel divide-y divide-line">
+              {leaders.map((p, i) => (
+                <li key={p.username} className="flex items-center gap-3 px-4 py-3">
+                  <span className="w-5 font-display font-extrabold text-muted">{i + 1}</span>
+                  <span className="flex-1 truncate font-bold">{p.username}</span>
+                  <span className="text-sm text-muted">
+                    {p.tournamentsWon > 0 && <b className="text-ink">{p.tournamentsWon} 🏆 </b>}
+                    {p.wins}W {p.losses}L
+                  </span>
+                </li>
+              ))}
+            </ol>
+          )}
+        </aside>
+      </section>
+    </div>
+  );
+}
