@@ -7,6 +7,7 @@ import authRoutes from './routes/auth.js';
 import tournamentRoutes from './routes/tournaments.js';
 import paymentRoutes from './routes/payments.js';
 import miscRoutes from './routes/misc.js';
+import { recentEmails } from './services/mailer.js';
 
 export function createApp() {
   const app = express();
@@ -37,10 +38,23 @@ export function createApp() {
   app.use('/api', apiLimiter);
   app.use('/api/auth/register', signupLimiter);
   app.use('/api/auth/login', loginLimiter);
+  app.use('/api/auth/forgot-password', rateLimit({
+    windowMs: 60 * 60 * 1000,
+    limit: config.resetLimit,
+    standardHeaders: 'draft-7',
+    legacyHeaders: false,
+    message: { error: 'Too many reset requests. Try again in an hour.' },
+  }));
+  app.use('/api/auth/change-password', loginLimiter);
   app.use('/api/auth', authRoutes);
   app.use('/api/tournaments', tournamentRoutes);
   app.use('/api/payments', paymentRoutes);
   app.use('/api', miscRoutes);
+
+  if (config.exposeDevOutbox) {
+    // Local testing only (EXPOSE_DEV_OUTBOX=1, never in production).
+    app.get('/api/dev/emails', (req, res) => res.json({ emails: recentEmails() }));
+  }
 
   app.use('/api', (req, res) => res.status(404).json({ error: 'Not found' }));
   // eslint-disable-next-line no-unused-vars

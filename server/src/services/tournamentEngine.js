@@ -5,6 +5,7 @@ import User from '../models/User.js';
 import { config } from '../config.js';
 import { shuffle } from './ids.js';
 import { serializeTournament, checkinOpensAt } from './serialize.js';
+import { sendDueReminders, onCancelled } from './tournamentMail.js';
 
 // Runs scheduled single-elimination tournaments.
 // - Lobby check-in opens CHECKIN_OPENS_MINUTES before start (players enter with Entry ID + passkey).
@@ -55,6 +56,8 @@ export class TournamentEngine {
     });
     for (const t of opening) await this.#checkInPresent(t);
 
+    await sendDueReminders();
+
     const due = await Tournament.find({ status: 'upcoming', startsAt: { $lte: now } });
     for (const t of due) await this.#withLock(t._id.toString(), () => this.#start(t._id));
   }
@@ -85,6 +88,7 @@ export class TournamentEngine {
           : 'Only one player checked in, so the tournament could not run. Entry fees refunded.';
       await t.save();
       await Payment.updateMany({ tournament: t._id, status: 'paid' }, { status: 'refunded', note: 'Tournament did not run' });
+      onCancelled(t).catch((err) => console.error('cancel emails failed', err));
       await this.broadcast(tid);
       return;
     }

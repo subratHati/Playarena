@@ -28,6 +28,10 @@ export async function api(path, { method = 'GET', body } = {}) {
     throw new ApiError("Can't reach the server. Check your connection and try again.", 0);
   }
   const data = await res.json().catch(() => ({}));
+  if (res.status === 401 && data.code === 'session_expired') {
+    setToken(null);
+    window.dispatchEvent(new Event('pa:session-expired'));
+  }
   if (!res.ok) throw new ApiError(data.error || `Request failed (${res.status})`, res.status, data);
   return data;
 }

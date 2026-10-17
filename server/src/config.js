@@ -22,7 +22,19 @@ export const config = {
   // Max signups per IP per hour, and max FAILED logins per IP per 15 minutes.
   signupLimit: num(process.env.SIGNUP_LIMIT_PER_HOUR, 20),
   loginFailLimit: num(process.env.LOGIN_FAIL_LIMIT, 10),
+  resetLimit: num(process.env.RESET_LIMIT_PER_HOUR, 5),
   schedulerIntervalMs: 5000,
+
+  // Email (Brevo). Without BREVO_API_KEY, emails are printed to the server console.
+  brevoApiKey: process.env.BREVO_API_KEY || '',
+  emailFrom: process.env.EMAIL_FROM || '',
+  emailFromName: process.env.EMAIL_FROM_NAME || 'PlayArena',
+  emailTimezone: process.env.EMAIL_TIMEZONE || 'Asia/Kolkata',
+  reminderMinutes: num(process.env.REMINDER_MINUTES, 30),
+  // Links in emails point here. Defaults to the first CLIENT_URL.
+  appUrl: (process.env.APP_URL || (process.env.CLIENT_URL || 'http://localhost:5173').split(',')[0]).trim().replace(/\/$/, ''),
+  // Local testing only: exposes recent emails at GET /api/dev/emails. Never set in production.
+  exposeDevOutbox: process.env.EXPOSE_DEV_OUTBOX === '1' && process.env.NODE_ENV !== 'production',
 };
 
 // Refuse to boot a production server with unsafe defaults.
@@ -34,6 +46,12 @@ export function assertProductionConfig() {
     problems.push('JWT_SECRET must be a random string of at least 32 characters');
   }
   if (!process.env.CLIENT_URL) problems.push('CLIENT_URL must be your frontend URL (e.g. https://playarena.vercel.app)');
+  if (process.env.BREVO_API_KEY && !process.env.EMAIL_FROM) {
+    problems.push('EMAIL_FROM must be set to a sender address you verified in Brevo');
+  }
+  if (!process.env.BREVO_API_KEY) {
+    console.warn('Warning: BREVO_API_KEY is not set, so emails (password resets, passes, reminders) are only logged, not sent.');
+  }
   if (problems.length) {
     console.error(`Refusing to start in production:\n- ${problems.join('\n- ')}`);
     process.exit(1);

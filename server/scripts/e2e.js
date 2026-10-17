@@ -222,7 +222,97 @@ async function walkover() {
 }
 
 await friendly();
+// Needs EXPOSE_DEV_OUTBOX=1 and REMINDER_MINUTES=1 on the server.
+const outbox = async () => (await api('/api/dev/emails')).data.emails || [];
+const findEmail = async (to, subjectPart) => (await outbox()).find((e) => e.to === to && e.subject.includes(subjectPart));
+
+async function accounts() {
+  console.log('\n— Accounts: reset + change password —');
+  const short = await api('/api/auth/register', { method: 'POST', body: { username: `sh_${tag}`, email: `sh_${tag}@t.dev`, password: 'abc123' } });
+  check(short.status === 400, 'signup rejects passwords under 8 characters');
+
+  const u = await signup(`acc_${tag}`, `acc_${tag}@t.dev`);
+  const unknown = await api('/api/auth/forgot-password', { method: 'POST', body: { email: `nobody_${tag}@t.dev` } });
+  const known = await api('/api/auth/forgot-password', { method: 'POST', body: { email: `acc_${tag}@t.dev` } });
+  check(unknown.status === 200 && unknown.data.message === known.data.message, 'forgot-password answers the same for unknown emails');
+
+  await sleep(200);
+  const mail = await findEmail(`acc_${tag}@t.dev`, 'Reset your PlayArena password');
+  const token = mail?.text.match(/token=([a-f0-9]{64})/)?.[1];
+  check(Boolean(token), 'reset email contains a one-time link');
+
+  const bad = await api('/api/auth/reset-password', { method: 'POST', body: { token: 'f'.repeat(64), password: 'newpassword1' } });
+  check(bad.status === 400, 'made-up reset token rejected');
+
+  await sleep(1100); // make sure the old login is from an earlier second
+  const reset = await api('/api/auth/reset-password', { method: 'POST', body: { token, password: 'newpassword1' } });
+  check(reset.status === 200 && reset.data.token, 'reset sets the new password and logs in');
+
+  const oldMe = await api('/api/auth/me', { token: u.token });
+  check(oldMe.status === 401 && oldMe.data.code === 'session_expired', 'old login stops working after reset');
+  const oldSocket = await connect(u.token).then((s) => (s.disconnect(), 'connected')).catch((e) => e.message);
+  check(oldSocket === 'unauthorized', 'old login is refused by the game server too');
+
+  const reuse = await api('/api/auth/reset-password', { method: 'POST', body: { token, password: 'another-pass1' } });
+  check(reuse.status === 400, 'reset link works only once');
+  const oldPw = await api('/api/auth/login', { method: 'POST', body: { email: `acc_${tag}@t.dev`, password: 'secret123' } });
+  const newPw = await api('/api/auth/login', { method: 'POST', body: { email: `acc_${tag}@t.dev`, password: 'newpassword1' } });
+  check(oldPw.status === 401 && newPw.status === 200, 'old password fails, new password works');
+
+  const wrong = await api('/api/auth/change-password', { method: 'POST', token: newPw.data.token, body: { currentPassword: 'nope', newPassword: 'third-pass1' } });
+  check(wrong.status === 400, 'change-password needs the current password');
+  await sleep(1100);
+  const changed = await api('/api/auth/change-password', {
+    method: 'POST',
+    token: newPw.data.token,
+    body: { currentPassword: 'newpassword1', newPassword: 'third-pass1' },
+  });
+  check(changed.status === 200, 'change-password works');
+  const staleAfterChange = await api('/api/auth/me', { token: newPw.data.token });
+  const fresh = await api('/api/auth/me', { token: changed.data.token });
+  check(staleAfterChange.status === 401 && fresh.status === 200, 'other sessions logged out, this one kept');
+  await sleep(200);
+  check((await outbox()).filter((e) => e.to === `acc_${tag}@t.dev` && e.subject.includes('was changed')).length === 2, '"password changed" notice sent each time');
+}
+
+async function tournamentEmails() {
+  console.log('\n— Tournament emails —');
+  const admin = (await api('/api/auth/login', { method: 'POST', body: { email: 'admin-e2e@playarena.dev', password: 'secret123' } })).data;
+  const t = (
+    await api('/api/tournaments', {
+      method: 'POST',
+      token: admin.token,
+      body: { title: `Mail Cup ${tag}`, gameId: 'connect-four', entryFee: 25, maxPlayers: 4, startsAt: new Date(Date.now() + 75_000).toISOString() },
+    })
+  ).data.tournament;
+  const u = await signup(`ml_${tag}`, `ml_${tag}@t.dev`);
+  const order = (await api(`/api/tournaments/${t.id}/checkout`, { method: 'POST', token: u.token })).data;
+  const reg = (await api(`/api/payments/${order.orderId}/confirm`, { method: 'POST', token: u.token, body: {} })).data.registration;
+  await sleep(300);
+  const pass = await findEmail(`ml_${tag}@t.dev`, `Your pass for Mail Cup ${tag}`);
+  check(pass?.text.includes(reg.entryId) && pass?.text.includes(reg.passkey), 'booking email carries the Entry ID and passkey');
+  check(/IST/.test(pass?.text || ''), 'times in emails are shown in IST');
+
+  console.log('  waiting for the reminder window…');
+  let reminder;
+  for (let i = 0; i < 30 && !reminder; i++) {
+    await sleep(1000);
+    reminder = await findEmail(`ml_${tag}@t.dev`, 'starts in');
+  }
+  check(Boolean(reminder), `reminder sent before the start ("${reminder?.subject}")`);
+  await sleep(6000);
+  const reminders = (await outbox()).filter((e) => e.to === `ml_${tag}@t.dev` && e.subject.includes('starts in'));
+  check(reminders.length === 1, 'reminder sent only once');
+
+  await api(`/api/tournaments/${t.id}/cancel`, { method: 'POST', token: admin.token, body: {} });
+  await sleep(500);
+  const cancel = await findEmail(`ml_${tag}@t.dev`, 'was cancelled');
+  check(cancel?.text.includes('₹25 has been refunded'), 'cancellation email mentions the refund');
+}
+
 await tournament();
 await walkover();
+await accounts();
+await tournamentEmails();
 console.log(failures ? `\n${failures} check(s) failed` : '\nAll checks passed');
 process.exit(failures ? 1 : 0);

@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { api, formatWhen, inr } from '../lib/api';
 import { GAMES } from '../lib/games';
 import Ticket from '../components/Ticket';
+import { ChangePassword } from './PasswordReset';
 
 const PAY_STATUS = { paid: 'Paid', failed: 'Failed', refunded: 'Refunded', created: 'Not completed' };
 
@@ -32,6 +33,7 @@ export default function Me() {
     <div className="space-y-12">
       <header>
         <h1 className="text-4xl font-extrabold">{user.username}</h1>
+        <p className="text-muted">{user.email}</p>
         <dl className="mt-4 flex flex-wrap gap-8">
           {[
             ['Wins', s.wins],
@@ -135,6 +137,11 @@ export default function Me() {
           )}
         </section>
       </div>
+
+      <section>
+        <h2 className="mb-4 text-2xl font-extrabold">Password</h2>
+        <ChangePassword />
+      </section>
     </div>
   );
 }

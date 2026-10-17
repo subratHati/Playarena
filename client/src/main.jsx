@@ -17,6 +17,7 @@ import Lobby from './pages/Lobby';
 import Me from './pages/Me';
 import Admin from './pages/Admin';
 import Auth from './pages/Auth';
+import { ForgotPassword, ResetPassword } from './pages/PasswordReset';
 
 function NotFound() {
   return (
@@ -46,6 +47,8 @@ createRoot(document.getElementById('root')).render(
             <Route path="admin" element={<Admin />} />
             <Route path="login" element={<Auth mode="login" />} />
             <Route path="register" element={<Auth mode="register" />} />
+            <Route path="forgot-password" element={<ForgotPassword />} />
+            <Route path="reset-password" element={<ResetPassword />} />
             <Route path="*" element={<NotFound />} />
           </Route>
         </Routes>

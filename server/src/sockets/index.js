@@ -4,6 +4,7 @@ import { verifyToken } from '../middleware/auth.js';
 import { RoomManager } from './rooms.js';
 import { Matchmaking } from './matchmaking.js';
 import { TournamentEngine } from '../services/tournamentEngine.js';
+import User from '../models/User.js';
 
 export function setupSockets(httpServer) {
   const io = new Server(httpServer, { cors: { origin: config.clientUrls, credentials: true } });
@@ -12,10 +13,12 @@ export function setupSockets(httpServer) {
   const tournaments = new TournamentEngine(io, rooms);
 
   // Every socket must carry the user's login token.
-  io.use((socket, next) => {
+  io.use(async (socket, next) => {
     try {
       const payload = verifyToken(socket.handshake.auth?.token);
-      socket.data.user = { id: payload.sub, username: payload.username };
+      const user = await User.findById(payload.sub).select('username passwordChangedAt');
+      if (!user || user.tokenIsStale(payload.iat)) throw new Error('stale');
+      socket.data.user = { id: payload.sub, username: user.username };
       next();
     } catch {
       next(new Error('unauthorized'));

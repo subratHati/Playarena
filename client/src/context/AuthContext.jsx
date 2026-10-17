@@ -24,6 +24,9 @@ export function AuthProvider({ children }) {
     const s = io(API_URL, { auth: { token: getToken() }, transports: ['websocket', 'polling'] });
     s.on('connect', () => setConnected(true));
     s.on('disconnect', () => setConnected(false));
+    s.on('connect_error', (err) => {
+      if (err.message === 'unauthorized') window.dispatchEvent(new Event('pa:session-expired'));
+    });
     setSocket(s);
     return () => {
       s.disconnect();
@@ -51,11 +54,24 @@ export function AuthProvider({ children }) {
     setUser(null);
   }, []);
 
+  // Used after a password reset or change: the server returns a fresh login.
+  const setSession = useCallback((token, nextUser) => {
+    setToken(token);
+    setUser(nextUser);
+  }, []);
+
+  // Log out everywhere if the server says this login is no longer valid (e.g. password changed elsewhere).
+  useEffect(() => {
+    const onExpired = () => logout();
+    window.addEventListener('pa:session-expired', onExpired);
+    return () => window.removeEventListener('pa:session-expired', onExpired);
+  }, [logout]);
+
   const refresh = useCallback(() => api('/auth/me').then((d) => setUser(d.user)), []);
 
   const value = useMemo(
-    () => ({ user, loading, socket, connected, login, register, logout, refresh }),
-    [user, loading, socket, connected, login, register, logout, refresh]
+    () => ({ user, loading, socket, connected, login, register, logout, refresh, setSession }),
+    [user, loading, socket, connected, login, register, logout, refresh, setSession]
   );
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

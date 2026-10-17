@@ -16,14 +16,22 @@ export async function requireAuth(req, res, next) {
   const header = req.headers.authorization || '';
   const token = header.startsWith('Bearer ') ? header.slice(7) : null;
   if (!token) return res.status(401).json({ error: 'Please log in' });
+  let payload;
   try {
-    const payload = verifyToken(token);
+    payload = verifyToken(token);
+  } catch {
+    return res.status(401).json({ error: 'Session expired, please log in again', code: 'session_expired' });
+  }
+  try {
     const user = await User.findById(payload.sub);
-    if (!user) return res.status(401).json({ error: 'Account not found' });
+    if (!user) return res.status(401).json({ error: 'Account not found', code: 'session_expired' });
+    if (user.tokenIsStale(payload.iat)) {
+      return res.status(401).json({ error: 'Your password was changed. Please log in again.', code: 'session_expired' });
+    }
     req.user = user;
     next();
-  } catch {
-    res.status(401).json({ error: 'Session expired, please log in again' });
+  } catch (err) {
+    next(err); // a database problem is a 500, not a reason to log the user out
   }
 }
 

@@ -4,6 +4,8 @@ A two-player gaming platform with a tournament zone.
 
 - **Games:** Tic Tac Toe, Stone Paper Scissors (best of 3), Connect Four.
 - **Friendly play:** vs the computer (Easy / Medium / Hard, no login needed) or online — random matchmaking or a 5-letter invite code for a friend. Rematches, forfeits and reconnects are handled.
+- **Accounts:** forgot/reset password by email, change password, and logging out other devices when the password changes.
+- **Emails:** booking pass, reminder before the start, cancellation and refund notice. Without an email key they're printed in the server terminal, so local testing needs no setup.
 - **Tournament zone:** admins schedule knockout tournaments with an entry fee, seat limit and start time. Players pay (mock checkout), receive an **Entry ID + passkey**, and use them to enter the lobby. At the start time the bracket is drawn automatically and matches are played live online. Rewards are non-cash (badges + leaderboard).
 
 Stack: React + Vite + Tailwind v4 (client), Node + Express + MongoDB/Mongoose + Socket.io (server).
@@ -52,7 +54,7 @@ Log in as the admin to see the **Admin** tab and schedule tournaments. Anyone wh
 
 ### End-to-end test
 
-With the server running and `admin-e2e@playarena.dev` in `ADMIN_EMAILS` (plus a short `NO_SHOW_SECONDS`, e.g. 8):
+With the server running and `admin-e2e@playarena.dev` in `ADMIN_EMAILS`, plus `NO_SHOW_SECONDS=8`, `REMINDER_MINUTES=1`, `EXPOSE_DEV_OUTBOX=1` and high `SIGNUP_LIMIT_PER_HOUR` / `RESET_LIMIT_PER_HOUR`:
 
 ```bash
 cd server && npm install && node scripts/e2e.js

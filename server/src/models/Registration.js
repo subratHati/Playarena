@@ -9,6 +9,7 @@ const registrationSchema = new mongoose.Schema(
     passkey: { type: String, required: true },
     payment: { type: mongoose.Schema.Types.ObjectId, ref: 'Payment' },
     checkedInAt: { type: Date, default: null },
+    reminderSentAt: { type: Date, default: null },
     placement: { type: String, default: '' }, // "Champion", "Runner-up", "Round 2", ...
   },
   { timestamps: true }

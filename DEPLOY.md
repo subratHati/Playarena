@@ -109,6 +109,41 @@ Don't reuse `admin123` anywhere live.
 
 ---
 
+## 7. Turn on email (password reset, passes, reminders)
+
+Until this is set up, the site works but emails are only written to the Render log. Nobody receives a reset link,
+booking pass or reminder.
+
+Render's free plan blocks normal email (SMTP), so PlayArena sends through **Brevo's web API**, which works on any plan.
+Brevo's free tier allows 300 emails a day.
+
+1. Sign up at **brevo.com** (free).
+2. **Add a sender:** top-right menu → **Senders, Domains & Dedicated IPs** → **Senders** → **Add a sender**.
+   Use the address emails should come from, e.g. your Gmail. Brevo emails you a code to verify it.
+3. **Create an API key:** top-right menu → **SMTP & API** → **API Keys** → **Generate a new API key**. Copy it.
+4. On Render → **Environment**, add:
+   | Key | Value |
+   |---|---|
+   | `BREVO_API_KEY` | the key from step 3 |
+   | `EMAIL_FROM` | the sender you verified in step 2 |
+5. Save. Render restarts the API.
+6. Test: on the live site, log out → **Log in** → **Forgot password?** → enter your email. The email should arrive within a minute.
+
+Emails sent from a Gmail address through Brevo sometimes land in **Spam** at first. Mark one as "Not spam".
+For reliable delivery at scale, buy a domain (e.g. `playarena.in`), verify it in Brevo under **Domains**, and send from
+`noreply@playarena.in`.
+
+If emails don't arrive, the Render log shows `[email] Brevo rejected …` with Brevo's reason. The usual causes are a sender
+that isn't verified yet, or a new Brevo account still waiting for activation.
+
+What gets emailed:
+- **Booking:** the Entry ID and passkey, so players don't lose their pass.
+- **Reminder:** `REMINDER_MINUTES` (default 30) before the start, with the pass and a lobby link.
+- **Cancellation:** when an admin cancels, or too few players check in, with the refund note.
+- **Password reset** link (valid 1 hour, single use) and a notice whenever a password changes.
+
+---
+
 ## Updating later
 
 `git push` to `main` → Render and Vercel both redeploy automatically.
@@ -127,6 +162,9 @@ recreated on boot and players reconnect from the lobby, but anyone mid-move lose
 | `ADMIN_EMAILS` | Render | Emails that become admin when they sign up |
 | `CHECKIN_OPENS_MINUTES` / `NO_SHOW_SECONDS` / `RECONNECT_SECONDS` | Render | Tournament timing |
 | `SIGNUP_LIMIT_PER_HOUR` / `LOGIN_FAIL_LIMIT` | Render | Abuse limits per IP (defaults 20 and 10) |
+| `BREVO_API_KEY` / `EMAIL_FROM` | Render | Sending email (see step 7) |
+| `REMINDER_MINUTES` | Render | Reminder email before a tournament (0 turns it off) |
+| `EMAIL_TIMEZONE` | Render | Timezone for times in emails (default `Asia/Kolkata`) |
 | `VITE_API_URL` | Vercel | Where the client finds the API |
 
 In production the API **refuses to start** if `MONGO_URI` or `CLIENT_URL` is missing or `JWT_SECRET` is weak.

@@ -135,7 +135,7 @@ export default function TournamentDetail() {
           <h2 className="mb-1 text-2xl font-extrabold">{justPaid ? 'You’re in. Here’s your pass.' : 'Your pass'}</h2>
           <p className="mb-4 text-muted">
             You’ll need this Entry ID and passkey to enter the lobby. Check-in opens{' '}
-            {formatWhen(t.checkinOpensAt)}.
+            {formatWhen(t.checkinOpensAt)}.{justPaid && user?.email && ` We’ve also emailed it to ${user.email}, and we’ll remind you before the start.`}
           </p>
           <Ticket tournament={t} registration={reg} />
         </section>

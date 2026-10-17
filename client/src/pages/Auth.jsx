@@ -55,8 +55,16 @@ export default function Auth({ mode }) {
           <label htmlFor="password" className="label">
             Password
           </label>
-          <input id="password" type="password" className="field" value={form.password} onChange={set('password')} autoComplete={isLogin ? 'current-password' : 'new-password'} required minLength={6} />
+          <input id="password" type="password" className="field" value={form.password} onChange={set('password')} autoComplete={isLogin ? 'current-password' : 'new-password'} required minLength={isLogin ? 1 : 8} />
+          {!isLogin && <p className="mt-1 text-sm text-muted">At least 8 characters.</p>}
         </div>
+        {isLogin && (
+          <p className="-mt-2 text-right text-sm">
+            <Link to="/forgot-password" className="font-bold text-court underline-offset-4 hover:underline">
+              Forgot password?
+            </Link>
+          </p>
+        )}
         {error && (
           <p className="text-sm font-bold text-lose" role="alert">
             {error}

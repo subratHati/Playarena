@@ -9,6 +9,7 @@ import { gameIds } from '../games/index.js';
 import { requireAuth, requireAdmin, verifyToken, asyncH } from '../middleware/auth.js';
 import { newEntryId, newPasskey, newOrderId } from '../services/ids.js';
 import { serializeTournament, serializeRegistration } from '../services/serialize.js';
+import { onBooked, onCancelled } from '../services/tournamentMail.js';
 
 const router = Router();
 const isId = (id) => mongoose.isValidObjectId(id);
@@ -170,6 +171,7 @@ router.post(
     );
     if (!t) return res.status(409).json({ error: 'Only upcoming tournaments can be cancelled' });
     await Payment.updateMany({ tournament: t._id, status: 'paid' }, { status: 'refunded', note: 'Tournament cancelled' });
+    onCancelled(t).catch((err) => console.error('cancel emails failed', err));
     res.json({ tournament: serializeTournament(t) });
   })
 );
@@ -226,5 +228,6 @@ export async function completePayment(payment, user, method) {
   payment.method = method;
   payment.paidAt = new Date();
   await payment.save();
+  onBooked(user, t, reg).catch((err) => console.error('booking email failed', err));
   return { status: 201, body: { registration: serializeRegistration(reg, t) } };
 }
