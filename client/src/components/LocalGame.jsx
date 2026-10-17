@@ -65,14 +65,14 @@ export default function LocalGame({ gameId, onExit, playerName = 'You' }) {
 
   // Count each finished game once, and celebrate wins.
   const counted = useRef(null);
-  useEffect(() => {
-    if (!shown || counted.current === state) return;
-    counted.current = state;
+   useEffect(() => {
+    if (!shown || counted.current === shown) return;
+    counted.current = shown;
     if (shown.winner === 0) setConfetti((n) => n + 1);
     setTally((t) =>
       shown.winner === null ? { ...t, draw: t.draw + 1 } : shown.winner === 0 ? { ...t, you: t.you + 1 } : { ...t, cpu: t.cpu + 1 }
     );
-  }, [shown, state]);
+  }, [shown]);
 
   const move = (m) => {
     if (outcome || busy) return;
