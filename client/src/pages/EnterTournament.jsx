@@ -48,7 +48,7 @@ export default function EnterTournament() {
           <input
             id="entryId"
             className="field font-display text-lg tracking-wider uppercase"
-            placeholder="PA-TTT-XXXXXX"
+            placeholder="MV-TTT-XXXXXX"
             value={entryId}
             onChange={(e) => setEntryId(e.target.value.toUpperCase())}
             autoComplete="off"

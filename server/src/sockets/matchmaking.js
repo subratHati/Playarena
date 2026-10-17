@@ -1,5 +1,6 @@
 import { gameIds } from '../games/index.js';
 import { code } from '../services/ids.js';
+import { config } from '../config.js';
 
 // Friendly online play: a random-opponent queue per game, plus private invite codes.
 export class Matchmaking {
@@ -38,6 +39,9 @@ export class Matchmaking {
   }
 
   joinQueue(socket, gameId) {
+    if (!config.matchmakingEnabled) {
+      return socket.emit('match:error', { message: 'Finding a random opponent is coming soon. Invite a friend instead.' });
+    }
     if (!this.queues.has(gameId)) return socket.emit('match:error', { message: 'Unknown game' });
     if (this.#busy(socket)) return;
     this.removeEverywhere(socket);

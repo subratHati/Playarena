@@ -3,6 +3,8 @@ import { useAuth } from '../context/AuthContext';
 import { GAMES } from '../lib/games';
 import { Board, isMyTurn } from './Boards';
 import Countdown from './Countdown';
+import Confetti from './Confetti';
+import { useShownOutcome } from './LocalGame';
 
 const REASON = {
   played: '',
@@ -18,6 +20,12 @@ export default function OnlineMatch({ roomId, onExit, exitLabel = 'Back' }) {
   const [m, setM] = useState(null);
   const [error, setError] = useState('');
   const [gone, setGone] = useState(false);
+  const [confetti, setConfetti] = useState(0);
+  const finished = m?.status === 'over' ? m.result : null;
+  const shownResult = useShownOutcome(finished, m?.gameId);
+  useEffect(() => {
+    if (shownResult && shownResult.winnerIndex === m?.you) setConfetti((n) => n + 1);
+  }, [shownResult]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!socket) return undefined;
@@ -61,7 +69,7 @@ export default function OnlineMatch({ roomId, onExit, exitLabel = 'Back' }) {
   const me = m.you;
   const opp = 1 - me;
   const names = m.players.map((p, i) => (i === me ? `${p.username} (you)` : p.username));
-  const over = m.status === 'over';
+  const over = m.status === 'over' && Boolean(shownResult);
   const canMove = m.status === 'playing' && connected && isMyTurn(m.gameId, m.view, me);
   const iWon = over && m.result?.winnerIndex === me;
   const iLost = over && m.result?.winnerIndex === opp;
@@ -74,7 +82,8 @@ export default function OnlineMatch({ roomId, onExit, exitLabel = 'Back' }) {
     if (m.result.reason === 'double no-show') status = 'Neither player showed up.';
     else if (m.result.winnerIndex === null) status = "It's a draw.";
     else status = `${iWon ? 'You win' : `${m.players[opp].username} wins`} ${REASON[m.result.reason] || ''}`.trim() + (iWon ? '!' : '.');
-  } else if (m.gameId === 'rock-paper-scissors') status = m.view.myPick ? 'Waiting for the reveal…' : 'Make your pick.';
+  } else if (m.status === 'over') status = '…';
+  else if (m.gameId === 'rock-paper-scissors') status = m.view.myPick ? 'Waiting for the reveal…' : 'Pick your hand.';
   else status = canMove ? 'Your move.' : `${m.players[opp].username} is thinking…`;
 
   const leave = () => {
@@ -85,6 +94,7 @@ export default function OnlineMatch({ roomId, onExit, exitLabel = 'Back' }) {
 
   return (
     <div>
+      <Confetti fireKey={confetti} />
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3 text-sm">
           {m.players.map((p, i) => (
@@ -104,7 +114,7 @@ export default function OnlineMatch({ roomId, onExit, exitLabel = 'Back' }) {
       </div>
 
       <p
-        className={`mb-1 font-display text-2xl font-bold ${iWon ? 'text-win' : iLost ? 'text-lose' : ''}`}
+        className={`mb-1 font-display text-2xl font-extrabold ${over ? 'bounce-in' : ''} ${iWon ? 'text-win' : iLost ? 'text-lose' : ''}`}
         aria-live="polite"
       >
         {status}

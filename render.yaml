@@ -1,4 +1,4 @@
-# Render Blueprint for the PlayArena API.
+# Render Blueprint for the MivoPlay API.
 # Render → New → Blueprint → pick this repo. You'll be asked for the values marked sync: false.
 # The build runs from the repo root because the server imports ../shared.
 services:
@@ -31,6 +31,8 @@ services:
         value: Asia/Kolkata
       - key: REMINDER_MINUTES
         value: 30
+      - key: ENABLE_MATCHMAKING
+        value: 0
       - key: CHECKIN_OPENS_MINUTES
         value: 15
       - key: NO_SHOW_SECONDS

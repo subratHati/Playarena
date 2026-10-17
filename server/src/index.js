@@ -15,7 +15,7 @@ async function main() {
   await tournaments.startScheduler();
 
   server.listen(config.port, () => {
-    console.log(`PlayArena API on port ${config.port}`);
+    console.log(`MivoPlay API on port ${config.port}`);
     console.log(`Allowed frontend origins: ${config.clientUrls.join(', ')}`);
   });
 

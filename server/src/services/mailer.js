@@ -57,12 +57,12 @@ function layout(title, bodyHtml) {
   return `<!doctype html><html><body style="margin:0;background:#edf0f4;font-family:Arial,Helvetica,sans-serif;color:#172033">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:24px 12px">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;background:#ffffff;border-radius:14px;border:1px solid #cfd6e0">
-<tr><td style="padding:22px 24px 0;font-size:18px;font-weight:bold;color:#3346e8">PlayArena</td></tr>
+<tr><td style="padding:22px 24px 0;font-size:18px;font-weight:bold;color:#172033">Mivo<span style="color:#3346e8">Play</span></td></tr>
 <tr><td style="padding:12px 24px 24px;font-size:15px;line-height:1.55">
 <h1 style="font-size:22px;margin:0 0 12px">${esc(title)}</h1>
 ${bodyHtml}
 </td></tr></table>
-<p style="font-size:12px;color:#5b6578;margin:14px 0 0">You’re getting this because you have a PlayArena account.</p>
+<p style="font-size:12px;color:#5b6578;margin:14px 0 0">You’re getting this because you have a MivoPlay account.</p>
 </td></tr></table></body></html>`;
 }
 
@@ -89,7 +89,7 @@ export const when = (d) =>
 export function resetPasswordEmail(user, link) {
   return {
     to: user.email,
-    subject: 'Reset your PlayArena password',
+    subject: 'Reset your MivoPlay password',
     text: `Hi ${user.username},\n\nUse this link to set a new password. It works once and expires in 1 hour:\n${link}\n\nIf you didn’t ask for this, ignore this email. Your password stays the same.`,
     html: layout(
       'Reset your password',
@@ -101,7 +101,7 @@ export function resetPasswordEmail(user, link) {
 export function passwordChangedEmail(user) {
   return {
     to: user.email,
-    subject: 'Your PlayArena password was changed',
+    subject: 'Your MivoPlay password was changed',
     text: `Hi ${user.username},\n\nYour password was just changed and you were logged out on other devices.\nIf this wasn’t you, reset your password now: ${appUrl('/forgot-password')}`,
     html: layout(
       'Your password was changed',

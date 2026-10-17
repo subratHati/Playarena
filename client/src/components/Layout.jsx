@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { Mivo, Wordmark } from './Brand';
 
 const navClass = ({ isActive }) =>
   `rounded-lg px-3 py-2 text-sm font-bold transition-colors ${isActive ? 'bg-ink text-chalk' : 'text-ink hover:bg-ink/5'}`;
@@ -47,9 +48,9 @@ export default function Layout() {
     <div className="flex min-h-screen flex-col">
       <header className="border-b border-line bg-chalk/90 backdrop-blur supports-[backdrop-filter]:bg-chalk/75 sticky top-0 z-30">
         <div className="mx-auto flex max-w-6xl items-center gap-4 px-4 py-3">
-          <Link to="/" className="flex items-center gap-2 font-display text-xl font-extrabold">
-            <img src="/favicon.svg" alt="" className="h-8 w-8" />
-            PlayArena
+          <Link to="/" className="flex items-center gap-2 text-xl" aria-label="MivoPlay home">
+            <Mivo className="h-9 w-9" />
+            <Wordmark />
           </Link>
           <nav className="ml-4 hidden items-center gap-1 md:flex">{links}</nav>
           <div className="ml-auto flex items-center gap-2">
@@ -122,7 +123,7 @@ export default function Layout() {
 
       <footer className="border-t border-line">
         <div className="mx-auto flex max-w-6xl flex-wrap gap-x-6 gap-y-1 px-4 py-6 text-sm text-muted">
-          <span>PlayArena</span>
+          <Wordmark />
           <span>Tournament rewards are badges and leaderboard places — no cash prizes.</span>
         </div>
       </footer>

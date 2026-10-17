@@ -144,7 +144,7 @@ async function tournament() {
       co.data = again.data;
     }
     const ok = await api(`/api/payments/${co.data.orderId}/confirm`, { method: 'POST', token: u.token, body: { method: 'upi' } });
-    check(ok.status === 201 && /^PA-TTT-/.test(ok.data.registration?.entryId), `p${i + 1} paid → ${ok.data.registration?.entryId}`);
+    check(ok.status === 201 && /^MV-TTT-/.test(ok.data.registration?.entryId), `p${i + 1} paid → ${ok.data.registration?.entryId}`);
     creds.push(ok.data.registration);
   }
   const dup = await api(`/api/tournaments/${tid}/checkout`, { method: 'POST', token: p[0].token });
@@ -237,7 +237,7 @@ async function accounts() {
   check(unknown.status === 200 && unknown.data.message === known.data.message, 'forgot-password answers the same for unknown emails');
 
   await sleep(200);
-  const mail = await findEmail(`acc_${tag}@t.dev`, 'Reset your PlayArena password');
+  const mail = await findEmail(`acc_${tag}@t.dev`, 'Reset your MivoPlay password');
   const token = mail?.text.match(/token=([a-f0-9]{64})/)?.[1];
   check(Boolean(token), 'reset email contains a one-time link');
 

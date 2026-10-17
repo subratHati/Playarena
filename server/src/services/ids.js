@@ -11,7 +11,7 @@ export function code(len) {
 
 const GAME_CODES = { 'tic-tac-toe': 'TTT', 'rock-paper-scissors': 'SPS', 'connect-four': 'C4' };
 
-export const newEntryId = (gameId) => `PA-${GAME_CODES[gameId] || 'GM'}-${code(6)}`;
+export const newEntryId = (gameId) => `MV-${GAME_CODES[gameId] || 'GM'}-${code(6)}`;
 export const newPasskey = () => code(8);
 export const newOrderId = () => `order_mock_${Date.now().toString(36)}${code(6).toLowerCase()}`;
 

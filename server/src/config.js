@@ -23,12 +23,14 @@ export const config = {
   signupLimit: num(process.env.SIGNUP_LIMIT_PER_HOUR, 20),
   loginFailLimit: num(process.env.LOGIN_FAIL_LIMIT, 10),
   resetLimit: num(process.env.RESET_LIMIT_PER_HOUR, 5),
+  // "Find an opponent" (random matchmaking). Off until there's enough traffic; invites and tournaments always work.
+  matchmakingEnabled: process.env.ENABLE_MATCHMAKING === '1',
   schedulerIntervalMs: 5000,
 
   // Email (Brevo). Without BREVO_API_KEY, emails are printed to the server console.
   brevoApiKey: process.env.BREVO_API_KEY || '',
   emailFrom: process.env.EMAIL_FROM || '',
-  emailFromName: process.env.EMAIL_FROM_NAME || 'PlayArena',
+  emailFromName: process.env.EMAIL_FROM_NAME || 'MivoPlay',
   emailTimezone: process.env.EMAIL_TIMEZONE || 'Asia/Kolkata',
   reminderMinutes: num(process.env.REMINDER_MINUTES, 30),
   // Links in emails point here. Defaults to the first CLIENT_URL.
@@ -45,7 +47,7 @@ export function assertProductionConfig() {
   if (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 32 || /change-me/.test(process.env.JWT_SECRET)) {
     problems.push('JWT_SECRET must be a random string of at least 32 characters');
   }
-  if (!process.env.CLIENT_URL) problems.push('CLIENT_URL must be your frontend URL (e.g. https://playarena.vercel.app)');
+  if (!process.env.CLIENT_URL) problems.push('CLIENT_URL must be your frontend URL (e.g. https://mivoplay.fun)');
   if (process.env.BREVO_API_KEY && !process.env.EMAIL_FROM) {
     problems.push('EMAIL_FROM must be set to a sender address you verified in Brevo');
   }

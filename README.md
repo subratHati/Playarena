@@ -1,9 +1,10 @@
-# PlayArena
+# MivoPlay
 
-A two-player gaming platform with a tournament zone.
+A two-player gaming platform with a tournament zone, at mivoplay.fun.
 
 - **Games:** Tic Tac Toe, Stone Paper Scissors (best of 3), Connect Four.
-- **Friendly play:** vs the computer (Easy / Medium / Hard, no login needed) or online — random matchmaking or a 5-letter invite code for a friend. Rematches, forfeits and reconnects are handled.
+- **Friendly play:** vs Mivo the computer (easy level, no login needed) or online with a friend using a 5-letter invite code. Random matchmaking is built and tested but switched off until there's traffic (`ENABLE_MATCHMAKING=1` on the server turns it on). Rematches, forfeits and reconnects are handled.
+- **Homepage hero:** rotating slides configured in `client/src/content/heroSlides.js`. To use your own image, drop it in `client/public/hero/` and set `image` on the slide.
 - **Accounts:** forgot/reset password by email, change password, and logging out other devices when the password changes.
 - **Emails:** booking pass, reminder before the start, cancellation and refund notice. Without an email key they're printed in the server terminal, so local testing needs no setup.
 - **Tournament zone:** admins schedule knockout tournaments with an entry fee, seat limit and start time. Players pay (mock checkout), receive an **Entry ID + passkey**, and use them to enter the lobby. At the start time the bracket is drawn automatically and matches are played live online. Rewards are non-cash (badges + leaderboard).
@@ -67,7 +68,7 @@ It covers matchmaking, invite codes, rematch, forfeit, hidden SPS picks, admin-o
 | Step | What happens |
 |---|---|
 | Book | `POST /api/tournaments/:id/checkout` creates a payment order (free tournaments skip straight to the pass). |
-| Pay | `POST /api/payments/:orderId/confirm` — the seat is reserved atomically, then a `Registration` with an Entry ID (`PA-TTT-7K3QX9`) and 8-character passkey is issued. |
+| Pay | `POST /api/payments/:orderId/confirm` — the seat is reserved atomically, then a `Registration` with an Entry ID (`MV-TTT-7K3QX9`) and 8-character passkey is issued. |
 | Enter | `POST /api/tournaments/enter` checks Entry ID + passkey belong to the logged-in user and returns a short-lived lobby pass. |
 | Check in | The lobby socket joins with that pass. Players are checked in automatically once check-in opens (`CHECKIN_OPENS_MINUTES` before start). |
 | Start | The scheduler (every 5 s) draws a random bracket from checked-in players. Odd count → one bye. Fewer than 2 → cancelled and refunded. |

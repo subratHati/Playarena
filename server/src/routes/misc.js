@@ -2,11 +2,15 @@ import { Router } from 'express';
 import User from '../models/User.js';
 import Match from '../models/Match.js';
 import { catalog } from '../games/index.js';
+import { config } from '../config.js';
 import { requireAuth, asyncH } from '../middleware/auth.js';
 
 const router = Router();
 
 router.get('/games', (req, res) => res.json({ games: catalog }));
+
+// Feature switches the client reads at startup (flip them on Render, no redeploy of the site needed).
+router.get('/features', (req, res) => res.json({ matchmaking: config.matchmakingEnabled }));
 
 router.get(
   '/leaderboard',

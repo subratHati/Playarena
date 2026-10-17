@@ -1,4 +1,4 @@
-# Deploying PlayArena
+# Deploying MivoPlay
 
 Three pieces: **MongoDB Atlas** (database) → **Render** (API + Socket.io) → **Vercel** (React client).
 Do them in this order, because each one needs the URL of the one before.
@@ -114,7 +114,7 @@ Don't reuse `admin123` anywhere live.
 Until this is set up, the site works but emails are only written to the Render log. Nobody receives a reset link,
 booking pass or reminder.
 
-Render's free plan blocks normal email (SMTP), so PlayArena sends through **Brevo's web API**, which works on any plan.
+Render's free plan blocks normal email (SMTP), so MivoPlay sends through **Brevo's web API**, which works on any plan.
 Brevo's free tier allows 300 emails a day.
 
 1. Sign up at **brevo.com** (free).
@@ -130,8 +130,8 @@ Brevo's free tier allows 300 emails a day.
 6. Test: on the live site, log out → **Log in** → **Forgot password?** → enter your email. The email should arrive within a minute.
 
 Emails sent from a Gmail address through Brevo sometimes land in **Spam** at first. Mark one as "Not spam".
-For reliable delivery at scale, buy a domain (e.g. `playarena.in`), verify it in Brevo under **Domains**, and send from
-`noreply@playarena.in`.
+For reliable delivery at scale, buy a domain (e.g. `mivoplay.fun`), verify it in Brevo under **Domains**, and send from
+an address on it, like `team@mivoplay.fun`.
 
 If emails don't arrive, the Render log shows `[email] Brevo rejected …` with Brevo's reason. The usual causes are a sender
 that isn't verified yet, or a new Brevo account still waiting for activation.
@@ -141,6 +141,45 @@ What gets emailed:
 - **Reminder:** `REMINDER_MINUTES` (default 30) before the start, with the pass and a lobby link.
 - **Cancellation:** when an admin cancels, or too few players check in, with the refund note.
 - **Password reset** link (valid 1 hour, single use) and a notice whenever a password changes.
+
+## 8. Use your own domain (mivoplay.fun)
+
+The goal: the site on `https://mivoplay.fun` (and `www`), the API on `https://api.mivoplay.fun`.
+Nothing in the code is tied to a domain. Everything comes from environment variables, so this is DNS and settings only.
+
+**Don't touch the Brevo DNS records** (the `brevo-code` TXT, DKIM and `_dmarc` records). Only add the new records below.
+
+### 8a. Site on Vercel
+1. Vercel → your project → **Settings** → **Domains** → add `mivoplay.fun`. Also add `www.mivoplay.fun` when Vercel offers it, and let it redirect to `mivoplay.fun`.
+2. Vercel shows the DNS records to add, usually an **A** record for `@` and a **CNAME** for `www`.
+   Add **exactly what Vercel shows** in your domain's DNS panel.
+3. Wait until Vercel shows both domains as **Valid**. HTTPS is set up automatically.
+
+### 8b. API on Render
+1. Render → your API service → **Settings** → **Custom Domains** → add `api.mivoplay.fun`.
+2. Render shows a **CNAME** target (like `playarena-api.onrender.com`). In your DNS, add a **CNAME** record with name `api` pointing to that target.
+3. Wait until Render shows the domain as **Verified** with a certificate issued.
+4. Check `https://api.mivoplay.fun/api/health` shows `{"ok":true}`.
+
+### 8c. Point everything at the new addresses
+| Where | Key | New value |
+|---|---|---|
+| Render → Environment | `CLIENT_URL` | `https://mivoplay.fun,https://www.mivoplay.fun` |
+| Render → Environment | `APP_URL` | `https://mivoplay.fun` (links in emails) |
+| Vercel → Settings → Environment Variables | `VITE_API_URL` | `https://api.mivoplay.fun` |
+
+Save on Render (it restarts), then on Vercel go to **Deployments** → ⋯ → **Redeploy**, because `VITE_API_URL` is baked in at build time.
+
+Players who logged in on the old `vercel.app` address need to log in once more on `mivoplay.fun`.
+Keep the old `vercel.app` URL in `CLIENT_URL` for a few days if people still have it bookmarked.
+
+---
+
+## Feature switches
+
+| Key (Render) | Effect |
+|---|---|
+| `ENABLE_MATCHMAKING=1` | Turns on **Find a random opponent**. Any other value shows it as "Coming soon". Invite codes and tournaments work either way. Takes effect after Render restarts; no site redeploy needed. |
 
 ---
 
@@ -165,6 +204,8 @@ recreated on boot and players reconnect from the lobby, but anyone mid-move lose
 | `BREVO_API_KEY` / `EMAIL_FROM` | Render | Sending email (see step 7) |
 | `REMINDER_MINUTES` | Render | Reminder email before a tournament (0 turns it off) |
 | `EMAIL_TIMEZONE` | Render | Timezone for times in emails (default `Asia/Kolkata`) |
+| `APP_URL` | Render | Base address for links in emails (defaults to the first `CLIENT_URL`) |
+| `ENABLE_MATCHMAKING` | Render | `1` turns on random matchmaking |
 | `VITE_API_URL` | Vercel | Where the client finds the API |
 
 In production the API **refuses to start** if `MONGO_URI` or `CLIENT_URL` is missing or `JWT_SECRET` is weak.

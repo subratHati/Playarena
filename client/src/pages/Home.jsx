@@ -4,6 +4,8 @@ import { api, formatWhen, inr } from '../lib/api';
 import { GAME_LIST, GAMES } from '../lib/games';
 import GameArt from '../components/GameArt';
 import Countdown from '../components/Countdown';
+import Hero from '../components/Hero';
+import { Mivo } from '../components/Brand';
 
 export default function Home() {
   const [tournaments, setTournaments] = useState([]);
@@ -15,33 +17,32 @@ export default function Home() {
   }, []);
 
   return (
-    <div className="space-y-14">
-      <section className="max-w-3xl">
-        <h1 className="text-4xl font-extrabold sm:text-6xl">Pick a game. Play a friend, a stranger, or the computer.</h1>
-        <p className="mt-4 max-w-xl text-lg text-muted">
-          Quick two-player games that start in seconds. When you want more at stake, book a seat in a scheduled
-          tournament.
-        </p>
-      </section>
+    <div className="space-y-12">
+      <h1 className="sr-only">MivoPlay: quick games and tournaments</h1>
+      <Hero />
 
       <section aria-labelledby="games-h">
-        <h2 id="games-h" className="sr-only">
-          Games
+        <h2 id="games-h" className="mb-5 text-3xl font-extrabold">
+          Pick a game
         </h2>
-        <ul className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+        <ul className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {GAME_LIST.map((g) => (
             <li key={g.id} className="flex">
               <Link
                 to={`/play/${g.id}`}
-                className="group flex w-full items-center gap-4 rounded-3xl border border-line bg-card p-3 transition-colors hover:border-ink sm:flex-col sm:items-stretch sm:p-4"
+                className="group flex w-full items-center gap-4 rounded-[24px] border-[3px] border-ink bg-card p-3 shadow-[0_6px_0_var(--color-ink)] transition-transform hover:-translate-y-1 active:translate-y-1 active:shadow-[0_2px_0_var(--color-ink)] sm:flex-col sm:items-stretch sm:p-4"
               >
-                <GameArt gameId={g.id} className="aspect-square w-24 shrink-0 sm:w-full" />
+                <div className={`flex aspect-square w-24 shrink-0 items-center justify-center overflow-hidden rounded-[18px] ${g.bg} sm:aspect-auto sm:h-44 sm:w-full`}>
+                  <GameArt gameId={g.id} className="h-full transition-transform duration-300 group-hover:scale-105 group-hover:-rotate-2 motion-reduce:transition-none" />
+                </div>
                 <div className="flex flex-1 items-end justify-between gap-3 sm:px-1">
                   <div>
                     <h3 className="text-xl font-extrabold sm:text-2xl">{g.name}</h3>
                     <p className="text-muted">{g.tagline}</p>
                   </div>
-                  <span className={`shrink-0 rounded-full ${g.bg} px-4 py-2 font-bold text-white max-sm:hidden`}>Play</span>
+                  <span className={`shrink-0 rounded-full border-[3px] border-ink ${g.bg} px-4 py-1.5 font-display font-extrabold text-white max-sm:hidden`}>
+                    Play
+                  </span>
                 </div>
               </Link>
             </li>
@@ -58,7 +59,10 @@ export default function Home() {
             </Link>
           </div>
           {tournaments.length === 0 ? (
-            <p className="panel p-6 text-muted">No tournaments are scheduled right now. Check back soon.</p>
+            <div className="panel flex items-center gap-4 p-6">
+              <Mivo className="h-14 w-14 shrink-0" />
+              <p className="text-muted">No tournaments are scheduled right now. Warm up against Mivo while you wait.</p>
+            </div>
           ) : (
             <ul className="panel divide-y divide-line">
               {tournaments.map((t) => (
