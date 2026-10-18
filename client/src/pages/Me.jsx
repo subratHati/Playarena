@@ -6,7 +6,7 @@ import { GAMES } from '../lib/games';
 import Ticket from '../components/Ticket';
 import { ChangePassword } from './PasswordReset';
 
-const PAY_STATUS = { paid: 'Paid', failed: 'Failed', refunded: 'Refunded', created: 'Not completed' };
+const PAY_STATUS = { paid: 'Paid', failed: 'Failed', refund_pending: 'Refund pending', refunded: 'Refunded', created: 'Not completed' };
 
 export default function Me() {
   const { user, loading, refresh } = useAuth();
@@ -83,7 +83,7 @@ export default function Me() {
                     </span>
                   </span>
                   <span className="text-sm font-bold">
-                    {r.tournament.status === 'cancelled' ? 'Cancelled, refunded' : r.placement || 'Finished'}
+                    {['cancelled', 'deleted'].includes(r.tournament.status) ? 'Called off, refund due' : r.placement || 'Finished'}
                   </span>
                 </Link>
               </li>
@@ -129,7 +129,7 @@ export default function Me() {
                   </span>
                   <span className="text-right">
                     <b>{inr(p.amount)}</b>
-                    <span className={`block ${p.status === 'paid' ? 'text-win' : 'text-muted'}`}>{PAY_STATUS[p.status]}</span>
+                    <span className={`block ${p.status === 'paid' ? 'text-win' : p.status === 'refund_pending' ? 'text-lose font-bold' : 'text-muted'}`}>{PAY_STATUS[p.status]}</span>
                   </span>
                 </li>
               ))}

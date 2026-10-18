@@ -128,7 +128,7 @@ export function reminderEmail(user, t, reg, minutes) {
   const link = appUrl(`/tournaments/enter?entryId=${encodeURIComponent(reg.entryId)}`);
   return {
     to: user.email,
-    subject: `${t.title} starts in ${minutes} minutes`,
+    subject: `${t.title} starts in ${minutes} minute${minutes === 1 ? "" : "s"}`,
     text: `Hi ${user.username},\n\n${t.title} starts at ${when(t.startsAt)}.\nEntry ID: ${reg.entryId}\nPasskey: ${reg.passkey}\n\nEnter the lobby now so you don't miss your first match: ${link}`,
     html: layout(
       `Starts in ${minutes} minutes`,
@@ -140,11 +140,11 @@ export function reminderEmail(user, t, reg, minutes) {
 export function cancelledEmail(user, t, refunded) {
   return {
     to: user.email,
-    subject: `${t.title} was cancelled`,
-    text: `Hi ${user.username},\n\n${t.title} (${when(t.startsAt)}) was cancelled. ${t.note}${refunded ? `\nYour entry fee of ₹${t.entryFee} has been refunded.` : ''}\n\nOther tournaments: ${appUrl('/tournaments')}`,
+    subject: `${t.title} was called off`,
+    text: `Hi ${user.username},\n\n${t.title} (${when(t.startsAt)}) was called off. ${t.note}${refunded ? `\nYour entry fee of ₹${t.entryFee} will be refunded to you.` : ''}\n\nOther tournaments: ${appUrl('/tournaments')}`,
     html: layout(
-      'Tournament cancelled',
-      `<p>Hi ${esc(user.username)}, <b>${esc(t.title)}</b> (${esc(when(t.startsAt))}) was cancelled.</p><p>${esc(t.note)}</p>${refunded ? `<p>Your entry fee of <b>₹${esc(t.entryFee)}</b> has been refunded.</p>` : ''}${button(appUrl('/tournaments'), 'See other tournaments')}`
+      'Tournament called off',
+      `<p>Hi ${esc(user.username)}, <b>${esc(t.title)}</b> (${esc(when(t.startsAt))}) was called off.</p><p>${esc(t.note)}</p>${refunded ? `<p>Your entry fee of <b>₹${esc(t.entryFee)}</b> will be refunded to you.</p>` : ''}${button(appUrl('/tournaments'), 'See other tournaments')}`
     ),
   };
 }

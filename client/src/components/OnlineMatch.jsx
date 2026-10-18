@@ -1,9 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { GAMES } from '../lib/games';
 import { Board, isMyTurn } from './Boards';
 import Countdown from './Countdown';
-import Confetti from './Confetti';
+import ResultOverlay, { useLoseShake } from './ResultOverlay';
 import { useShownOutcome } from './LocalGame';
 
 const REASON = {
@@ -12,6 +12,10 @@ const REASON = {
   forfeit: 'by forfeit',
   walkover: 'by walkover — opponent didn’t show up',
   'double no-show': '',
+  timeouts: 'on time — too many missed picks',
+  'double timeout': '',
+  'not ready': '— opponent didn’t press Ready',
+  cancelled: '',
 };
 
 // A live server-run match. Used for friendly online games and tournament matches.
@@ -20,12 +24,23 @@ export default function OnlineMatch({ roomId, onExit, exitLabel = 'Back' }) {
   const [m, setM] = useState(null);
   const [error, setError] = useState('');
   const [gone, setGone] = useState(false);
-  const [confetti, setConfetti] = useState(0);
-  const finished = m?.status === 'over' ? m.result : null;
+  const [fire, setFire] = useState({ key: 0, outcome: null });
+  // Count each time a match ends, so later updates (rematch requests etc.) don't replay the celebration.
+  const [overCount, setOverCount] = useState(0);
+  const prevStatus = useRef(null);
+  useEffect(() => {
+    if (m?.status === 'over' && prevStatus.current && prevStatus.current !== 'over') setOverCount((n) => n + 1);
+    if (m?.status === 'over' && prevStatus.current === null) setOverCount((n) => n + 1);
+    prevStatus.current = m?.status ?? prevStatus.current;
+  }, [m?.status]);
+  const finished = useMemo(() => (m?.status === 'over' ? m.result : null), [overCount, m?.status === 'over']); // eslint-disable-line react-hooks/exhaustive-deps
   const shownResult = useShownOutcome(finished, m?.gameId);
   useEffect(() => {
-    if (shownResult && shownResult.winnerIndex === m?.you) setConfetti((n) => n + 1);
+    if (!shownResult || shownResult.reason === 'cancelled' || shownResult.reason === 'double no-show') return;
+    const outcome = shownResult.winnerIndex === null ? 'draw' : shownResult.winnerIndex === m?.you ? 'win' : 'lose';
+    setFire((f) => ({ key: f.key + 1, outcome }));
   }, [shownResult]); // eslint-disable-line react-hooks/exhaustive-deps
+  const shake = useLoseShake(fire.outcome === 'lose' ? fire.key : 0);
 
   useEffect(() => {
     if (!socket) return undefined;
@@ -79,11 +94,13 @@ export default function OnlineMatch({ roomId, onExit, exitLabel = 'Back' }) {
   let status;
   if (m.status === 'waiting') status = `Waiting for ${m.players[opp].username} to join…`;
   else if (over) {
-    if (m.result.reason === 'double no-show') status = 'Neither player showed up.';
+    if (m.result.reason === 'cancelled') status = 'Match cancelled.';
+    else if (m.result.reason === 'double no-show') status = 'Neither player showed up.';
+    else if (m.result.reason === 'double timeout') status = 'Both players missed too many picks.';
     else if (m.result.winnerIndex === null) status = "It's a draw.";
     else status = `${iWon ? 'You win' : `${m.players[opp].username} wins`} ${REASON[m.result.reason] || ''}`.trim() + (iWon ? '!' : '.');
   } else if (m.status === 'over') status = '…';
-  else if (m.gameId === 'rock-paper-scissors') status = m.view.myPick ? 'Waiting for the reveal…' : 'Pick your hand.';
+  else if (m.gameId === 'rock-paper-scissors') status = m.view.phase === 'ready' ? 'Press Ready to start.' : 'Pick fast!';
   else status = canMove ? 'Your move.' : `${m.players[opp].username} is thinking…`;
 
   const leave = () => {
@@ -94,7 +111,11 @@ export default function OnlineMatch({ roomId, onExit, exitLabel = 'Back' }) {
 
   return (
     <div>
-      <Confetti fireKey={confetti} />
+      <ResultOverlay
+        outcome={fire.outcome}
+        fireKey={fire.key}
+        subtitle={fire.outcome === 'win' ? `You beat ${m.players[opp].username}` : fire.outcome === 'lose' ? `${m.players[opp].username} won ${REASON[m.result?.reason] || ''}`.trim() : ''}
+      />
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3 text-sm">
           {m.players.map((p, i) => (
@@ -130,7 +151,7 @@ export default function OnlineMatch({ roomId, onExit, exitLabel = 'Back' }) {
         {m.kind === 'tournament' && m.gameId === 'tic-tac-toe' && m.view.game > 1 && !over && ` Replay game ${m.view.game}.`}
       </div>
 
-      <div className={m.status === 'waiting' ? 'pointer-events-none opacity-50' : ''}>
+      <div className={`${m.status === 'waiting' ? 'pointer-events-none opacity-50' : ''} ${shake}`}>
         <Board gameId={m.gameId} view={m.view} you={me} canMove={canMove} onMove={(move) => socket.emit('match:move', { roomId, move })} names={names} />
       </div>
 

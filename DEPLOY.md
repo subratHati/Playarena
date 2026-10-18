@@ -139,7 +139,7 @@ that isn't verified yet, or a new Brevo account still waiting for activation.
 What gets emailed:
 - **Booking:** the Entry ID and passkey, so players don't lose their pass.
 - **Reminder:** `REMINDER_MINUTES` (default 30) before the start, with the pass and a lobby link.
-- **Cancellation:** when an admin cancels, or too few players check in, with the refund note.
+- **Called off:** when an admin deletes a tournament, or too few players check in. Says the fee will be refunded; mark refunds as done in Admin after you send the money.
 - **Password reset** link (valid 1 hour, single use) and a notice whenever a password changes.
 
 ## 8. Use your own domain (mivoplay.fun)
@@ -200,6 +200,7 @@ recreated on boot and players reconnect from the lobby, but anyone mid-move lose
 | `CLIENT_URL` | Render | Allowed frontend origins (comma-separated) |
 | `ADMIN_EMAILS` | Render | Emails that become admin when they sign up |
 | `CHECKIN_OPENS_MINUTES` / `NO_SHOW_SECONDS` / `RECONNECT_SECONDS` | Render | Tournament timing |
+| `SPS_FIRST_PICK_MS` / `SPS_PICK_MS` / `SPS_REVEAL_MS` / `SPS_READY_SECONDS` | Render (optional) | Stone Paper Scissors timers. Defaults: 10 s, 3 s, 1 s, 60 s |
 | `SIGNUP_LIMIT_PER_HOUR` / `LOGIN_FAIL_LIMIT` | Render | Abuse limits per IP (defaults 20 and 10) |
 | `BREVO_API_KEY` / `EMAIL_FROM` | Render | Sending email (see step 7) |
 | `REMINDER_MINUTES` | Render | Reminder email before a tournament (0 turns it off) |

@@ -4,6 +4,20 @@ import { config } from '../config.js';
 import Match from '../models/Match.js';
 import User from '../models/User.js';
 
+// Per-game settings: Stone Paper Scissors timings come from config; in tournaments a player
+// who doesn't press Ready in time loses the match.
+function gameOptions(gameId, kind) {
+  if (gameId !== 'rock-paper-scissors') return {};
+  return {
+    timing: {
+      firstPickMs: config.spsFirstPickMs,
+      pickMs: config.spsPickMs,
+      revealMs: config.spsRevealMs,
+      readyMs: kind === 'tournament' ? config.spsReadySeconds * 1000 : null,
+    },
+  };
+}
+
 // Manages live 2-player matches (friendly online + tournament).
 // The server owns the game state; clients only send moves and render views.
 export class RoomManager {
@@ -33,10 +47,10 @@ export class RoomManager {
       drawPolicy: kind === 'tournament' ? 'replay' : 'end',
       onFinish,
       players: players.map((p) => ({ userId: p.userId, username: p.username, socketId: null })),
-      state: engine.createState({ starter: 0 }),
+      state: engine.createState({ starter: 0, ...gameOptions(gameId, kind) }),
       status: 'waiting',
       result: null,
-      timers: { noShow: null, reconnect: [null, null], cleanup: null },
+      timers: { noShow: null, reconnect: [null, null], cleanup: null, tick: null },
       rematch: new Set(),
       notice: null,
     };
@@ -73,6 +87,7 @@ export class RoomManager {
       room.status = 'playing';
       clearTimeout(room.timers.noShow);
       room.notice = null;
+      this.#begin(room);
     }
     this.broadcast(room);
     return room;
@@ -87,24 +102,71 @@ export class RoomManager {
       return socket.emit('match:error', { message: room.status === 'waiting' ? 'Waiting for your opponent' : 'Match is over' });
     }
 
-    const { state, error } = room.engine.applyMove(room.state, idx, move);
+    const { state, error } = room.engine.applyMove(room.state, idx, move, { now: Date.now() });
     if (error) return socket.emit('match:error', { message: error });
     room.state = state;
     room.notice = null;
+    this.#afterChange(room);
+  }
 
-    const outcome = room.engine.result(state);
+  // Start the game's own clock (timed games only), once both players are in.
+  #begin(room) {
+    if (room.engine.onStart) room.state = room.engine.onStart(room.state, { now: Date.now() });
+    this.#scheduleTick(room);
+  }
+
+  // After any state change: end the match, replay a tournament draw, or keep going.
+  #afterChange(room) {
+    const outcome = room.engine.result(room.state);
     if (outcome) {
-      if (outcome.winner === null && room.drawPolicy === 'replay') {
+      clearTimeout(room.timers.tick);
+      if (outcome.winner === null && !outcome.reason && room.drawPolicy === 'replay') {
         // Show the drawn board briefly, then restart.
         this.broadcast(room);
         room.notice = 'Draw! Replaying — a tournament match needs a winner.';
         room.state = room.engine.replay(room.state);
-        setTimeout(() => this.broadcast(room), 1200);
+        setTimeout(() => {
+          if (room.status !== 'playing') return;
+          this.#begin(room);
+          this.broadcast(room);
+        }, 1200);
         return;
       }
-      return this.finish(room, outcome.winner, outcome.winner === null ? 'draw' : 'played');
+      this.finish(room, outcome.winner, outcome.reason || (outcome.winner === null ? 'draw' : 'played'));
+      return;
     }
+    this.#scheduleTick(room);
     this.broadcast(room);
+  }
+
+  // Timed games tell us when something happens next (a timer runs out); wake up then.
+  #scheduleTick(room) {
+    clearTimeout(room.timers.tick);
+    const at = room.engine.nextEventAt?.(room.state);
+    if (!at) return;
+    room.timers.tick = setTimeout(() => {
+      if (room.status !== 'playing') return;
+      room.state = room.engine.tick(room.state, { now: Date.now() });
+      this.#afterChange(room);
+    }, Math.max(0, at - Date.now()) + 5);
+  }
+
+  // End a match without a result (used when an admin deletes a live tournament).
+  abort(roomId, message) {
+    const room = this.rooms.get(roomId);
+    if (!room || room.status === 'over') return;
+    room.status = 'over';
+    clearTimeout(room.timers.tick);
+    clearTimeout(room.timers.noShow);
+    room.timers.reconnect.forEach(clearTimeout);
+    room.players.forEach((p) => {
+      if (this.userRoom.get(p.userId) === room.id) this.userRoom.delete(p.userId);
+    });
+    room.result = { winnerIndex: null, winner: null, reason: 'cancelled' };
+    room.notice = message;
+    room.onFinish = null;
+    this.broadcast(room);
+    room.timers.cleanup = setTimeout(() => this.rooms.delete(room.id), 60_000);
   }
 
   leave(socket, roomId) {
@@ -150,13 +212,14 @@ export class RoomManager {
     if (room.rematch.size === 2 && room.players.every((p) => p.socketId)) {
       if (room.players.some((p) => this.activeRoomOf(p.userId))) return; // one of them started another match
       const starter = 1 - (room.state.starter ?? 0);
-      room.state = { ...room.engine.createState({ starter }), starter };
+      room.state = { ...room.engine.createState({ starter, ...gameOptions(room.gameId, room.kind) }), starter };
       room.status = 'playing';
       room.result = null;
       room.notice = null;
       room.rematch.clear();
       clearTimeout(room.timers.cleanup);
       room.players.forEach((p) => this.userRoom.set(p.userId, room.id));
+      this.#begin(room);
     }
     this.broadcast(room);
   }
@@ -165,6 +228,7 @@ export class RoomManager {
     if (room.status === 'over') return;
     room.status = 'over';
     clearTimeout(room.timers.noShow);
+    clearTimeout(room.timers.tick);
     room.timers.reconnect.forEach(clearTimeout);
     room.timers.reconnect = [null, null];
     room.players.forEach((p) => {
@@ -180,7 +244,7 @@ export class RoomManager {
     room.timers.cleanup = setTimeout(() => this.rooms.delete(room.id), 5 * 60_000);
 
     try {
-      if (reason !== 'double no-show') {
+      if (reason !== 'double no-show' && reason !== 'cancelled') {
         await Match.create({
           gameId: room.gameId,
           kind: room.kind,
@@ -229,7 +293,7 @@ export class RoomManager {
       status: room.status,
       you: idx,
       players: room.players.map((p) => ({ username: p.username, connected: Boolean(p.socketId) })),
-      view: room.engine.view(room.state, idx),
+      view: room.engine.view(room.state, idx, { now: Date.now() }),
       result: room.result,
       notice: room.notice,
       noShowAt: room.status === 'waiting' ? room.noShowAt || null : null,

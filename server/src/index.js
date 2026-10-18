@@ -12,6 +12,7 @@ async function main() {
   const app = createApp();
   const server = http.createServer(app);
   const { tournaments } = setupSockets(server);
+  app.locals.tournaments = tournaments; // routes use it to delete live tournaments
   await tournaments.startScheduler();
 
   server.listen(config.port, () => {

@@ -40,6 +40,9 @@ export function serializeTournament(t, { withBracket = false } = {}) {
     status: t.status,
     winnerName: t.winnerName,
     note: t.note,
+    imageUrl: t.imageVersion ? `/api/tournaments/${t._id}/image?v=${t.imageVersion}` : null,
+    imageAspect: t.imageAspect || 'square',
+    deletedAt: t.deletedAt || null,
   };
   if (withBracket) out.rounds = serializeRounds(t);
   return out;

@@ -22,8 +22,8 @@ export const GAMES = {
   'rock-paper-scissors': {
     id: 'rock-paper-scissors',
     name: 'Stone Paper Scissors',
-    tagline: 'Best of three. Read your opponent.',
-    rules: 'Both players pick in secret, then reveal. Stone breaks scissors, scissors cut paper, paper wraps stone. First to 2 rounds wins.',
+    tagline: 'First to 5. Think fast.',
+    rules: 'Both press Ready, then pick in secret before the timer runs out: 10 seconds for the first round, 3 seconds after that. Stone breaks scissors, scissors cut paper, paper wraps stone. First to 5 points wins. Miss more than 2 picks and you lose the match.',
     color: 'var(--color-sps)',
     text: 'text-sps',
     bg: 'bg-sps',

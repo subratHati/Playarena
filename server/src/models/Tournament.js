@@ -23,12 +23,17 @@ const tournamentSchema = new mongoose.Schema(
     maxPlayers: { type: Number, required: true, min: 2, max: 256 },
     startsAt: { type: Date, required: true, index: true },
     reward: { type: String, default: 'Champion badge + leaderboard spot', maxlength: 120 }, // non-cash
-    status: { type: String, enum: ['upcoming', 'live', 'completed', 'cancelled'], default: 'upcoming', index: true },
+    // cancelled = called off automatically (not enough players); deleted = removed by an admin (kept for refunds)
+    status: { type: String, enum: ['upcoming', 'live', 'completed', 'cancelled', 'deleted'], default: 'upcoming', index: true },
     registeredCount: { type: Number, default: 0 },
     rounds: { type: [new mongoose.Schema({ matches: [bracketMatchSchema] }, { _id: false })], default: [] },
     winner: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
     winnerName: { type: String, default: null },
     note: { type: String, default: '' },
+    imageVersion: { type: Number, default: 0 }, // 0 = no image; bumps the image URL so caches refresh
+    imageAspect: { type: String, enum: ['square', 'portrait', 'landscape'], default: 'square' }, // posters are square; older ones may be other shapes
+    deletedAt: { type: Date, default: null },
+    deletedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   },
   { timestamps: true }

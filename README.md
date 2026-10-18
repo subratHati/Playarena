@@ -6,7 +6,7 @@ A two-player gaming platform with a tournament zone, at mivoplay.fun.
 - **Friendly play:** vs Mivo the computer (easy level, no login needed) or online with a friend using a 5-letter invite code. Random matchmaking is built and tested but switched off until there's traffic (`ENABLE_MATCHMAKING=1` on the server turns it on). Rematches, forfeits and reconnects are handled.
 - **Homepage hero:** rotating slides configured in `client/src/content/heroSlides.js`. To use your own image, drop it in `client/public/hero/` and set `image` on the slide.
 - **Accounts:** forgot/reset password by email, change password, and logging out other devices when the password changes.
-- **Emails:** booking pass, reminder before the start, cancellation and refund notice. Without an email key they're printed in the server terminal, so local testing needs no setup.
+- **Emails:** booking pass, reminder before the start, called-off notice (fee will be refunded). Without an email key they're printed in the server terminal, so local testing needs no setup.
 - **Tournament zone:** admins schedule knockout tournaments with an entry fee, seat limit and start time. Players pay (mock checkout), receive an **Entry ID + passkey**, and use them to enter the lobby. At the start time the bracket is drawn automatically and matches are played live online. Rewards are non-cash (badges + leaderboard).
 
 Stack: React + Vite + Tailwind v4 (client), Node + Express + MongoDB/Mongoose + Socket.io (server).
@@ -55,13 +55,13 @@ Log in as the admin to see the **Admin** tab and schedule tournaments. Anyone wh
 
 ### End-to-end test
 
-With the server running and `admin-e2e@playarena.dev` in `ADMIN_EMAILS`, plus `NO_SHOW_SECONDS=8`, `REMINDER_MINUTES=1`, `EXPOSE_DEV_OUTBOX=1` and high `SIGNUP_LIMIT_PER_HOUR` / `RESET_LIMIT_PER_HOUR`:
+With the server running and `admin-e2e@playarena.dev` in `ADMIN_EMAILS`, plus `NO_SHOW_SECONDS=8`, `SPS_FIRST_PICK_MS=1500 SPS_PICK_MS=700 SPS_REVEAL_MS=200`, `REMINDER_MINUTES=1`, `EXPOSE_DEV_OUTBOX=1` and high `SIGNUP_LIMIT_PER_HOUR` / `RESET_LIMIT_PER_HOUR`:
 
 ```bash
 cd server && npm install && node scripts/e2e.js
 ```
 
-It covers matchmaking, invite codes, rematch, forfeit, hidden SPS picks, admin-only creation, full tournaments, failed + successful payments, duplicate registration, wrong/stolen passkeys, byes, walkovers, champion placement and the leaderboard.
+It covers matchmaking, invite codes, rematch, forfeit, hidden SPS picks, SPS Ready/timers and the 3-miss loss, cover images, deleting upcoming and live tournaments, participant lists and refund marking, homepage slides (add, hide, reorder, delete, switch modes), admin-only creation, full tournaments, failed + successful payments, duplicate registration, wrong/stolen passkeys, byes, walkovers, champion placement and the leaderboard.
 
 ## How the tournament flow works
 
@@ -71,8 +71,9 @@ It covers matchmaking, invite codes, rematch, forfeit, hidden SPS picks, admin-o
 | Pay | `POST /api/payments/:orderId/confirm` — the seat is reserved atomically, then a `Registration` with an Entry ID (`MV-TTT-7K3QX9`) and 8-character passkey is issued. |
 | Enter | `POST /api/tournaments/enter` checks Entry ID + passkey belong to the logged-in user and returns a short-lived lobby pass. |
 | Check in | The lobby socket joins with that pass. Players are checked in automatically once check-in opens (`CHECKIN_OPENS_MINUTES` before start). |
-| Start | The scheduler (every 5 s) draws a random bracket from checked-in players. Odd count → one bye. Fewer than 2 → cancelled and refunded. |
+| Start | The scheduler (every 5 s) draws a random bracket from checked-in players. Odd count → one bye. Fewer than 2 → called off, payments marked “refund pending”. |
 | Play | Each match is a live server-run room. Draws are replayed (other player starts). A player who doesn't join within `NO_SHOW_SECONDS` loses by walkover; one who disconnects mid-match has `RECONNECT_SECONDS` to return. |
+| Admin | Tournaments need a cover image (cropped to square, portrait or landscape in the browser) and can’t be edited. An admin can delete an upcoming or live one; it stays in the admin panel with its participants, and paid entries become “refund pending” until the admin marks each one refunded. |
 | Finish | Winners advance round by round. Champion and runner-up are recorded on registrations; `tournamentsWon` feeds the leaderboard. |
 
 If the server restarts mid-tournament, unfinished matches of the current round are recreated on boot and players reconnect from their lobby.

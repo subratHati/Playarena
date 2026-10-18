@@ -21,6 +21,8 @@ export function MivoShape({ mood = 'happy' }) {
       <circle cx="50" cy="43" r="3" fill="#ff8fab" opacity=".9" />
       {mood === 'wow' ? (
         <ellipse cx="32" cy="47" rx="5" ry="6" fill="#172033" />
+      ) : mood === 'sad' ? (
+        <path d="M26 50 Q32 44 38 50" stroke="#172033" strokeWidth="3" fill="none" strokeLinecap="round" />
       ) : (
         <path d="M26 45 Q32 51 38 45" stroke="#172033" strokeWidth="3" fill="none" strokeLinecap="round" />
       )}

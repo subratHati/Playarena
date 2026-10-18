@@ -1,4 +1,5 @@
-// Homepage hero slides. Edit this file to change what rotates at the top of the homepage.
+// Built-in homepage hero slides. Admins can also add their own slides with pictures in
+// Admin → Homepage, and choose built-in only, their own only, or both. No code change needed for that.
 //
 // To use your own picture on a slide:
 //   1. Put the image in client/public/hero/  (e.g. client/public/hero/diwali-cup.jpg)

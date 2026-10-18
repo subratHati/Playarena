@@ -11,7 +11,10 @@ const paymentSchema = new mongoose.Schema(
     currency: { type: String, default: 'INR' },
     provider: { type: String, default: 'mock' },
     method: { type: String, default: '' }, // upi / card / netbanking (mock)
-    status: { type: String, enum: ['created', 'paid', 'failed', 'refunded'], default: 'created' },
+    // refund_pending: the tournament was deleted/cancelled and the money still has to be returned by an admin
+    status: { type: String, enum: ['created', 'paid', 'failed', 'refund_pending', 'refunded'], default: 'created' },
+    refundedAt: { type: Date, default: null },
+    refundedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
     paidAt: { type: Date, default: null },
     note: { type: String, default: '' },
   },

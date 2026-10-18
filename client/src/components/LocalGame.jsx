@@ -3,13 +3,13 @@ import { engines, GAMES } from '../lib/games';
 import { computerMove } from '../lib/ai';
 import { Board, isMyTurn } from './Boards';
 import { Mivo } from './Brand';
-import Confetti from './Confetti';
+import ResultOverlay, { useLoseShake } from './ResultOverlay';
 
 // The computer always plays on easy. Change this one value to make it harder ('medium' or 'hard').
 const DIFFICULTY = 'easy';
 const reduceMotion = () => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
 
-// Delay showing a finished result so Stone Paper Scissors can finish its reveal animation.
+// Delay showing a finished result so the last Stone Paper Scissors round is visible first.
 export function useShownOutcome(outcome, gameId) {
   const [shown, setShown] = useState(outcome);
   useEffect(() => {
@@ -23,52 +23,92 @@ export function useShownOutcome(outcome, gameId) {
   return shown;
 }
 
+const REASON_TEXT = {
+  timeouts: 'Too many missed picks',
+  'not ready': 'Didn’t press Ready in time',
+};
+
 // You (player 0) vs Mivo the computer (player 1), entirely in the browser.
 export default function LocalGame({ gameId, onExit, playerName = 'You' }) {
   const engine = engines[gameId];
   const game = GAMES[gameId];
+  const timed = Boolean(engine.timed);
   const [starter, setStarter] = useState(0);
   const [state, setState] = useState(() => engine.createState({ starter: 0 }));
   const [tally, setTally] = useState({ you: 0, cpu: 0, draw: 0 });
   const [busy, setBusy] = useState(false);
-  const [confetti, setConfetti] = useState(0);
+  const [fire, setFire] = useState({ key: 0, outcome: null });
+  const [, forceRender] = useState(0);
   const thinking = useRef(false);
 
   const outcome = engine.result(state);
   const shown = useShownOutcome(outcome, gameId);
-  const view = engine.view(state, 0);
+  const view = engine.view(state, 0, { now: Date.now() });
   const names = [playerName, 'Mivo'];
+  const shake = useLoseShake(fire.outcome === 'lose' ? fire.key : 0);
 
-  // Mivo's turn.
+  // ----- Timed games (Stone Paper Scissors): run the clock, Mivo gets ready and picks -----
   useEffect(() => {
-    if (outcome || thinking.current) return undefined;
-    const cpuNeedsToAct = gameId === 'rock-paper-scissors' ? Boolean(state.picks[0]) && !state.picks[1] : state.turn === 1;
-    if (!cpuNeedsToAct) return undefined;
+    if (!timed || outcome) return undefined;
+    const at = engine.nextEventAt(state);
+    if (!at) return undefined;
+    const t = setTimeout(() => setState((s) => engine.tick(s, { now: Date.now() })), Math.max(0, at - Date.now()) + 5);
+    return () => clearTimeout(t);
+  }, [timed, state, outcome, engine]);
+
+  useEffect(() => {
+    if (!timed || outcome) return undefined;
+    if (state.phase === 'ready' && !state.ready[1]) {
+      const t = setTimeout(() => setState((s) => engine.applyMove(s, 1, { ready: true }, { now: Date.now() }).state || s), 400);
+      return () => clearTimeout(t);
+    }
+    if (state.phase === 'picking' && !state.picks[1]) {
+      const room = Math.max(300, Math.min(1800, (state.windowMs || 3000) - 900));
+      const t = setTimeout(() => {
+        setState((s) => {
+          if (s.phase !== 'picking' || s.picks[1]) return s;
+          const move = computerMove(gameId, engine.view(s, 1, { now: Date.now() }), DIFFICULTY);
+          return engine.applyMove(s, 1, move, { now: Date.now() }).state || s;
+        });
+      }, 350 + Math.random() * room);
+      return () => clearTimeout(t);
+    }
+    return undefined;
+  }, [timed, state.phase, state.picks?.[1], state.ready?.[1], state.rounds?.length, outcome, engine, gameId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Re-render a few times a second so the countdown text stays fresh.
+  useEffect(() => {
+    if (!timed || outcome) return undefined;
+    const t = setInterval(() => forceRender((n) => n + 1), 250);
+    return () => clearInterval(t);
+  }, [timed, outcome]);
+
+  // ----- Turn-based games: Mivo's move -----
+  useEffect(() => {
+    if (timed || outcome || thinking.current || state.turn !== 1) return undefined;
     thinking.current = true;
     setBusy(true);
-    const t = setTimeout(
-      () => {
-        setState((s) => {
-          const move = computerMove(gameId, engine.view(s, 1), DIFFICULTY);
-          return engine.applyMove(s, 1, move).state || s;
-        });
-        thinking.current = false;
-        setBusy(false);
-      },
-      gameId === 'rock-paper-scissors' ? 350 : 550
-    );
+    const t = setTimeout(() => {
+      setState((s) => {
+        const move = computerMove(gameId, engine.view(s, 1), DIFFICULTY);
+        return engine.applyMove(s, 1, move).state || s;
+      });
+      thinking.current = false;
+      setBusy(false);
+    }, 550);
     return () => {
       clearTimeout(t);
       thinking.current = false;
     };
-  }, [state, outcome, gameId, engine]);
+  }, [timed, state, outcome, gameId, engine]);
 
-  // Count each finished game once, and celebrate wins.
+  // Count each finished game once, and celebrate (or commiserate).
   const counted = useRef(null);
-   useEffect(() => {
+  useEffect(() => {
     if (!shown || counted.current === shown) return;
     counted.current = shown;
-    if (shown.winner === 0) setConfetti((n) => n + 1);
+    const result = shown.winner === null ? 'draw' : shown.winner === 0 ? 'win' : 'lose';
+    setFire((f) => ({ key: f.key + 1, outcome: result }));
     setTally((t) =>
       shown.winner === null ? { ...t, draw: t.draw + 1 } : shown.winner === 0 ? { ...t, you: t.you + 1 } : { ...t, cpu: t.cpu + 1 }
     );
@@ -76,7 +116,7 @@ export default function LocalGame({ gameId, onExit, playerName = 'You' }) {
 
   const move = (m) => {
     if (outcome || busy) return;
-    const res = engine.applyMove(state, 0, m);
+    const res = engine.applyMove(state, 0, m, { now: Date.now() });
     if (res.state) setState(res.state);
   };
 
@@ -94,14 +134,23 @@ export default function LocalGame({ gameId, onExit, playerName = 'You' }) {
     else if (shown.winner === 0) {
       status = 'You win!';
       mood = 'wink';
-    } else status = 'Mivo wins this one.';
+    } else {
+      status = 'Mivo wins this one.';
+      mood = 'sad';
+    }
   } else if (outcome) status = '…';
-  else if (gameId === 'rock-paper-scissors') status = 'Pick your hand.';
+  else if (timed) status = state.phase === 'ready' ? 'Press Ready to start.' : 'Pick fast!';
   else status = canMove ? 'Your move.' : 'Mivo is thinking…';
+
+  const reasonText = shown?.reason && REASON_TEXT[shown.reason];
 
   return (
     <div>
-      <Confetti fireKey={confetti} />
+      <ResultOverlay
+        outcome={fire.outcome}
+        fireKey={fire.key}
+        subtitle={reasonText && fire.outcome === 'lose' ? reasonText : fire.outcome === 'lose' ? 'Mivo got you this time' : fire.outcome === 'win' ? 'Mivo is impressed' : ''}
+      />
       <div className="mb-5 flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           <Mivo className={`h-14 w-14 shrink-0 ${shown ? 'bounce-in' : ''}`} mood={mood} key={shown ? 'done' : 'play'} />
@@ -115,6 +164,7 @@ export default function LocalGame({ gameId, onExit, playerName = 'You' }) {
             >
               {status}
             </p>
+            {reasonText && <p className="text-sm font-bold text-lose">{reasonText}</p>}
           </div>
         </div>
         <dl className="flex gap-2 text-center text-sm">
@@ -138,7 +188,9 @@ export default function LocalGame({ gameId, onExit, playerName = 'You' }) {
         </p>
       )}
 
-      <Board gameId={gameId} view={view} you={0} canMove={canMove} onMove={move} names={names} />
+      <div className={shake}>
+        <Board gameId={gameId} view={view} you={0} canMove={canMove} onMove={move} names={names} />
+      </div>
 
       <div className="mt-6 flex flex-wrap justify-center gap-3">
         {shown && (

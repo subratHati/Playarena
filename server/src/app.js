@@ -7,6 +7,7 @@ import authRoutes from './routes/auth.js';
 import tournamentRoutes from './routes/tournaments.js';
 import paymentRoutes from './routes/payments.js';
 import miscRoutes from './routes/misc.js';
+import heroRoutes from './routes/hero.js';
 import { recentEmails } from './services/mailer.js';
 
 export function createApp() {
@@ -15,7 +16,11 @@ export function createApp() {
   app.set('trust proxy', 1);
   app.use(helmet());
   app.use(cors({ origin: config.clientUrls, credentials: true }));
-  app.use(express.json({ limit: '100kb' }));
+  // Small JSON bodies everywhere, except the two uploads that carry an image.
+  const smallJson = express.json({ limit: '100kb' });
+  const imageJson = express.json({ limit: '4.5mb' }); // up to two pictures (hero banner: computer + phone)
+  const carriesImage = (p) => p === '/api/tournaments' || p === '/api/hero/slides' || /^\/api\/hero\/slides\/[a-f0-9]{24}\/update$/.test(p);
+  app.use((req, res, next) => (req.method === 'POST' && carriesImage(req.path) ? imageJson : smallJson)(req, res, next));
 
   const signupLimiter = rateLimit({
     windowMs: 60 * 60 * 1000,
@@ -49,6 +54,7 @@ export function createApp() {
   app.use('/api/auth', authRoutes);
   app.use('/api/tournaments', tournamentRoutes);
   app.use('/api/payments', paymentRoutes);
+  app.use('/api/hero', heroRoutes);
   app.use('/api', miscRoutes);
 
   if (config.exposeDevOutbox) {

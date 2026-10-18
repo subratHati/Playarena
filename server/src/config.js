@@ -27,6 +27,12 @@ export const config = {
   matchmakingEnabled: process.env.ENABLE_MATCHMAKING === '1',
   schedulerIntervalMs: 5000,
 
+  // Stone Paper Scissors timing (ms). Tournament players must press Ready within spsReadySeconds.
+  spsFirstPickMs: num(process.env.SPS_FIRST_PICK_MS, 10_000),
+  spsPickMs: num(process.env.SPS_PICK_MS, 3_000),
+  spsRevealMs: num(process.env.SPS_REVEAL_MS, 1_000),
+  spsReadySeconds: num(process.env.SPS_READY_SECONDS, 60),
+
   // Email (Brevo). Without BREVO_API_KEY, emails are printed to the server console.
   brevoApiKey: process.env.BREVO_API_KEY || '',
   emailFrom: process.env.EMAIL_FROM || '',

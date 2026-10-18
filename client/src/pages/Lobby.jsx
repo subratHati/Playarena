@@ -3,6 +3,7 @@ import { Link, Navigate, useParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { formatWhen, passKey } from '../lib/api';
 import { GAMES } from '../lib/games';
+import { tournamentImage } from '../lib/image';
 import Countdown, { useNow } from '../components/Countdown';
 import Bracket from '../components/Bracket';
 import OnlineMatch from '../components/OnlineMatch';
@@ -66,10 +67,13 @@ export default function Lobby() {
   return (
     <div className="space-y-8">
       <header className="flex flex-wrap items-end justify-between gap-4">
-        <div>
+        <div className="flex items-center gap-4">
+          {tournamentImage(t) && <img src={tournamentImage(t)} alt="" className="hidden h-20 w-20 rounded-[12px] object-cover sm:block" />}
+          <div>
           <p className={`font-bold ${g.text}`}>{g.name} lobby</p>
           <h1 className="text-3xl font-extrabold sm:text-4xl">{t.title}</h1>
           <p className="text-muted">{formatWhen(t.startsAt)}</p>
+        </div>
         </div>
         <p className="text-sm text-muted">
           {t.inLobby} in the lobby, {t.checkedInCount} checked in of {t.registeredCount} registered
@@ -125,9 +129,9 @@ export default function Lobby() {
               {placement && placement !== 'Champion' && <p className="mt-1 text-muted">Your finish: {placement}</p>}
             </>
           )}
-          {t.status === 'cancelled' && (
+          {['cancelled', 'deleted'].includes(t.status) && (
             <>
-              <h2 className="text-2xl font-extrabold">This tournament was cancelled.</h2>
+              <h2 className="text-2xl font-extrabold">This tournament was called off. Your entry fee will be refunded.</h2>
               <p className="mt-1 text-muted">{t.note}</p>
             </>
           )}

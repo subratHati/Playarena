@@ -84,10 +84,10 @@ export class TournamentEngine {
       t.status = 'cancelled';
       t.note =
         regs.length === 0
-          ? 'No players checked in. Entry fees refunded.'
-          : 'Only one player checked in, so the tournament could not run. Entry fees refunded.';
+          ? 'No players checked in, so the tournament was called off. Entry fees will be refunded.'
+          : 'Only one player checked in, so the tournament could not run. Entry fees will be refunded.';
       await t.save();
-      await Payment.updateMany({ tournament: t._id, status: 'paid' }, { status: 'refunded', note: 'Tournament did not run' });
+      await Payment.updateMany({ tournament: t._id, status: 'paid' }, { status: 'refund_pending', note: 'Tournament did not run' });
       onCancelled(t).catch((err) => console.error('cancel emails failed', err));
       await this.broadcast(tid);
       return;
@@ -223,6 +223,34 @@ export class TournamentEngine {
   async #launchNextRound(tid) {
     const t = await Tournament.findById(tid);
     if (t && t.status === 'live') await this.#launchRound(t);
+  }
+
+  // Admin deletes an upcoming or live tournament: stop its matches, mark payments for refund,
+  // tell everyone. The record stays (status 'deleted') so the admin can still see who to refund.
+  deleteTournament(tid, adminId, reason = '') {
+    return this.#withLock(String(tid), async () => {
+      const t = await Tournament.findById(tid);
+      if (!t) return { error: 'Tournament not found' };
+      if (!['upcoming', 'live'].includes(t.status)) return { error: `A ${t.status} tournament can't be deleted` };
+      const wasLive = t.status === 'live';
+      t.status = 'deleted';
+      t.deletedAt = new Date();
+      t.deletedBy = adminId;
+      t.note = `${reason ? `${reason.replace(/[.!?]*$/, '.')} ` : ''}This tournament was called off by the organiser. Entry fees will be refunded.`.trim();
+      await t.save();
+
+      for (const [key, roomId] of this.matchRooms) {
+        if (key.startsWith(`${t._id}:`)) {
+          this.rooms.abort(roomId, 'The organiser called off this tournament.');
+          this.matchRooms.delete(key);
+        }
+      }
+      await Payment.updateMany({ tournament: t._id, status: 'paid' }, { status: 'refund_pending', note: 'Tournament deleted' });
+      console.log(`[tournament] "${t.title}" deleted by admin${wasLive ? ' while live' : ''}`);
+      onCancelled(t).catch((err) => console.error('cancel emails failed', err));
+      await this.broadcast(t._id.toString());
+      return { tournament: t };
+    }).then((r) => r || { error: 'Could not delete the tournament, try again' });
   }
 
   // After a restart, replay any unfinished matches of live tournaments.

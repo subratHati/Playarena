@@ -23,8 +23,8 @@ export const catalog = [
   {
     id: 'rock-paper-scissors',
     name: 'Stone Paper Scissors',
-    tagline: 'Best of three. Read your opponent.',
-    description: 'Pick in secret, reveal together. Stone breaks scissors, scissors cut paper, paper wraps stone. First to 2 round wins takes the match.',
+    tagline: 'First to 5. Think fast.',
+    description: 'Timed rounds: 10 seconds for the first pick, then 3 seconds. Stone breaks scissors, scissors cut paper, paper wraps stone. First to 5 points wins; more than 2 missed picks loses the match.',
     players: '2 players',
     duration: '~30 sec',
     accent: 'amber',

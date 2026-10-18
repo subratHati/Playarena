@@ -4,10 +4,13 @@ import { api, formatWhen, inr } from '../lib/api';
 import { GAME_LIST, GAMES } from '../lib/games';
 import GameArt from '../components/GameArt';
 import Countdown from '../components/Countdown';
-import Hero from '../components/Hero';
+import Hero, { useHeroSlides } from '../components/Hero';
+import CoverImage from '../components/CoverImage';
 import { Mivo } from '../components/Brand';
+import { tournamentImage } from '../lib/image';
 
 export default function Home() {
+  const heroSlides = useHeroSlides();
   const [tournaments, setTournaments] = useState([]);
   const [leaders, setLeaders] = useState([]);
 
@@ -19,7 +22,7 @@ export default function Home() {
   return (
     <div className="space-y-12">
       <h1 className="sr-only">MivoPlay: quick games and tournaments</h1>
-      <Hero />
+      <Hero slides={heroSlides} />
 
       <section aria-labelledby="games-h">
         <h2 id="games-h" className="mb-5 text-3xl font-extrabold">
@@ -68,7 +71,13 @@ export default function Home() {
               {tournaments.map((t) => (
                 <li key={t.id}>
                   <Link to={`/tournaments/${t.id}`} className="flex flex-wrap items-center gap-x-4 gap-y-1 p-4 hover:bg-chalk/60">
-                    <span className={`h-10 w-1.5 rounded-full ${GAMES[t.gameId].bg}`} aria-hidden />
+                    {tournamentImage(t) ? (
+                      <CoverImage src={tournamentImage(t)} className="h-14 w-14 shrink-0 rounded-[10px]" />
+                    ) : (
+                      <span className={`grid h-14 w-14 shrink-0 place-items-center rounded-[10px] ${GAMES[t.gameId].bg}`} aria-hidden>
+                        <GameArt gameId={t.gameId} className="h-11" />
+                      </span>
+                    )}
                     <div className="min-w-0 flex-1">
                       <div className="truncate font-bold">{t.title}</div>
                       <div className="text-sm text-muted">
