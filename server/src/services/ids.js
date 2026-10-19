@@ -13,7 +13,8 @@ const GAME_CODES = { 'tic-tac-toe': 'TTT', 'rock-paper-scissors': 'SPS', 'connec
 
 export const newEntryId = (gameId) => `MV-${GAME_CODES[gameId] || 'GM'}-${code(6)}`;
 export const newPasskey = () => code(8);
-export const newOrderId = () => `order_mock_${Date.now().toString(36)}${code(6).toLowerCase()}`;
+// Letters, digits and underscore only: every gateway accepts it. Gateway attempts append "-1", "-2"…
+export const newOrderId = () => `mv_${Date.now().toString(36)}${code(6).toLowerCase()}`;
 
 export function shuffle(arr) {
   const a = [...arr];

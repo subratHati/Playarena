@@ -78,13 +78,23 @@ It covers matchmaking, invite codes, rematch, forfeit, hidden SPS picks, SPS Rea
 
 If the server restarts mid-tournament, unfinished matches of the current round are recreated on boot and players reconnect from their lobby.
 
-## Replacing the mock payment
+## Payments (Razorpay, Cashfree, PhonePe)
 
-`server/src/routes/payments.js` is the only place to change. For Razorpay (or Cashfree, PhonePe PG):
+Checkout offers every gateway whose keys are set on the server. With no keys it shows the **test checkout** (no real money), so local development needs nothing. Setup steps are in [DEPLOY.md → Payment gateways](DEPLOY.md#9-payment-gateways-razorpay-cashfree-phonepe).
 
-1. In `/checkout`, create the order on the gateway and return its order id + key to the client.
-2. In the client, replace `PaymentModal` with the gateway's checkout script.
-3. Replace `/confirm` with signature verification (and ideally a webhook), then call the existing `completePayment(payment, user, method)` — it already handles the atomic seat reservation, credentials, and refund-on-full.
+- Code: `server/src/services/payments/` (one file per gateway) and `server/src/routes/payments.js`.
+- A pass is issued only after the server asks the gateway itself that the order is paid and the amount matches. Browser callbacks and webhooks just trigger that check, so a forged callback can't create a pass.
+- Webhooks: `POST /api/payments/webhooks/razorpay|cashfree|phonepe` (signatures verified on the raw body). A background check every minute also picks up payments whose player closed the tab.
+- Refunds are not automated yet: "refund pending" entries are refunded from the gateway's dashboard and marked in Admin.
+
+Tests run against local stand-ins of the three gateways:
+
+```bash
+cd server
+node scripts/fake-gateways.js            # terminal 1
+set -a; . scripts/fake-gateways.env; set +a; npm start   # terminal 2 (bash)
+node scripts/e2e-payments.js             # terminal 3
+```
 
 **Legal note:** India's Promotion and Regulation of Online Gaming Act, 2025 prohibits online money games — games where users pay a fee or deposit expecting monetary winnings. This build deliberately offers no cash prizes. Keep rewards non-monetary, and get legal advice before introducing paid entry at scale.
 

@@ -12,6 +12,7 @@ import Play from './pages/Play';
 import MatchPage from './pages/MatchPage';
 import Tournaments from './pages/Tournaments';
 import TournamentDetail from './pages/TournamentDetail';
+import PaymentReturn from './pages/PaymentReturn';
 import EnterTournament from './pages/EnterTournament';
 import Lobby from './pages/Lobby';
 import Me from './pages/Me';
@@ -44,6 +45,7 @@ createRoot(document.getElementById('root')).render(
             <Route path="tournaments/:id" element={<TournamentDetail />} />
             <Route path="tournaments/:id/lobby" element={<Lobby />} />
             <Route path="me" element={<Me />} />
+            <Route path="payments/return" element={<PaymentReturn />} />
             <Route path="admin" element={<Admin />} />
             <Route path="login" element={<Auth mode="login" />} />
             <Route path="register" element={<Auth mode="register" />} />

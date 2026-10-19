@@ -41,6 +41,40 @@ export const config = {
   reminderMinutes: num(process.env.REMINDER_MINUTES, 30),
   // Links in emails point here. Defaults to the first CLIENT_URL.
   appUrl: (process.env.APP_URL || (process.env.CLIENT_URL || 'http://localhost:5173').split(',')[0]).trim().replace(/\/$/, ''),
+  // Payment gateways. A gateway is offered at checkout only when its keys are set.
+  payments: {
+    // Mock checkout (no real money): MOCK_PAYMENTS=1 forces it on, 0 forces it off.
+    // Unset: on only while no real gateway is configured.
+    mockSetting: process.env.MOCK_PAYMENTS,
+    // How often unfinished payments are re-checked with the gateway (ms).
+    reconcileMs: num(process.env.PAYMENT_RECONCILE_MS, 60_000),
+    // Public https address of this API, used for gateway notification links (e.g. https://api.mivoplay.fun).
+    apiPublicUrl: (process.env.API_PUBLIC_URL || '').trim().replace(/\/$/, ''),
+    razorpay: {
+      keyId: process.env.RAZORPAY_KEY_ID || '',
+      keySecret: process.env.RAZORPAY_KEY_SECRET || '',
+      webhookSecret: process.env.RAZORPAY_WEBHOOK_SECRET || '',
+      apiBase: process.env.RAZORPAY_API_BASE || 'https://api.razorpay.com',
+    },
+    cashfree: {
+      appId: process.env.CASHFREE_APP_ID || '',
+      secretKey: process.env.CASHFREE_SECRET_KEY || '',
+      env: process.env.CASHFREE_ENV === 'production' ? 'production' : 'sandbox',
+      apiVersion: process.env.CASHFREE_API_VERSION || '2023-08-01',
+      apiBase: process.env.CASHFREE_API_BASE || '',
+    },
+    phonepe: {
+      clientId: process.env.PHONEPE_CLIENT_ID || '',
+      clientSecret: process.env.PHONEPE_CLIENT_SECRET || '',
+      clientVersion: process.env.PHONEPE_CLIENT_VERSION || '1',
+      env: process.env.PHONEPE_ENV === 'production' ? 'production' : 'sandbox',
+      webhookUsername: process.env.PHONEPE_WEBHOOK_USERNAME || '',
+      webhookPassword: process.env.PHONEPE_WEBHOOK_PASSWORD || '',
+      apiBase: process.env.PHONEPE_API_BASE || '',
+      authUrl: process.env.PHONEPE_AUTH_URL || '',
+    },
+  },
+
   // Local testing only: exposes recent emails at GET /api/dev/emails. Never set in production.
   exposeDevOutbox: process.env.EXPOSE_DEV_OUTBOX === '1' && process.env.NODE_ENV !== 'production',
 };
@@ -57,6 +91,11 @@ export function assertProductionConfig() {
   if (process.env.BREVO_API_KEY && !process.env.EMAIL_FROM) {
     problems.push('EMAIL_FROM must be set to a sender address you verified in Brevo');
   }
+  const p = config.payments;
+  if (p.razorpay.keyId && !p.razorpay.keySecret) problems.push('RAZORPAY_KEY_SECRET is missing');
+  if (p.cashfree.appId && !p.cashfree.secretKey) problems.push('CASHFREE_SECRET_KEY is missing');
+  if (p.phonepe.clientId && !p.phonepe.clientSecret) problems.push('PHONEPE_CLIENT_SECRET is missing');
+  if (p.mockSetting === '1') console.warn('Warning: MOCK_PAYMENTS=1, so players can "pay" without real money.');
   if (!process.env.BREVO_API_KEY) {
     console.warn('Warning: BREVO_API_KEY is not set, so emails (password resets, passes, reminders) are only logged, not sent.');
   }

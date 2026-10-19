@@ -74,7 +74,7 @@ export default function TournamentDetail() {
   const [error, setError] = useState('');
   const [order, setOrder] = useState(null);
   const [booking, setBooking] = useState(false);
-  const [justPaid, setJustPaid] = useState(false);
+  const [justPaid, setJustPaid] = useState(Boolean(location.state?.justPaid));
 
   const load = useCallback(
     () =>

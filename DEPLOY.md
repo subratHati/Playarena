@@ -175,6 +175,79 @@ Keep the old `vercel.app` URL in `CLIENT_URL` for a few days if people still hav
 
 ---
 
+## 9. Payment gateways (Razorpay, Cashfree, PhonePe)
+
+You can turn on one, two or all three. Checkout shows each gateway whose keys are set. While none is set, the site keeps using the **test checkout** (no real money). As soon as one real gateway is set, the test checkout disappears automatically.
+
+Dashboard menu names below may differ slightly as the gateways update their sites. Look for "API keys" and "Webhooks".
+
+Start with each gateway's **test/sandbox keys**, try a booking end to end, then swap in live keys after the gateway approves your account. All keys go on **Render only** (never in Vercel, never in git).
+
+First add this on Render, used for payment notification links:
+
+| Key | Value |
+|---|---|
+| `API_PUBLIC_URL` | `https://api.mivoplay.fun` |
+
+### 9a. Razorpay
+
+1. Razorpay Dashboard → switch to **Test mode** → Account & Settings → **API Keys** → generate. You get a Key ID (`rzp_test_…`) and Key Secret.
+2. Dashboard → **Webhooks** → Add new webhook:
+   - URL: `https://api.mivoplay.fun/api/payments/webhooks/razorpay`
+   - Secret: make up a long random string
+   - Events: `payment.captured` and `order.paid`
+3. Make sure payments are set to **capture automatically** (the default). MivoPlay also captures any that arrive only "authorized".
+4. Render → Environment:
+
+| Key | Value |
+|---|---|
+| `RAZORPAY_KEY_ID` | `rzp_test_…` (later `rzp_live_…`) |
+| `RAZORPAY_KEY_SECRET` | the Key Secret |
+| `RAZORPAY_WEBHOOK_SECRET` | the webhook secret from step 2 |
+
+Test and live mode have **separate** keys and webhooks. Set the webhook up again in live mode when you go live.
+
+### 9b. Cashfree
+
+1. Cashfree Merchant Dashboard → Payment Gateway → switch to **Test** → Developers → **API Keys**. You get an App ID and Secret Key.
+2. Developers → **Webhooks** → add `https://api.mivoplay.fun/api/payments/webhooks/cashfree` (payment events). MivoPlay also sends this link with every order.
+3. For live payments, Cashfree must **whitelist your website domain** (`mivoplay.fun`). Request it in the dashboard (Developers → Whitelisting), otherwise the checkout won't open on your site.
+4. Render → Environment:
+
+| Key | Value |
+|---|---|
+| `CASHFREE_APP_ID` | App ID |
+| `CASHFREE_SECRET_KEY` | Secret Key |
+| `CASHFREE_ENV` | `sandbox` for test keys, `production` for live keys |
+
+Cashfree requires the player's mobile number, so MivoPlay asks for it when Cashfree is chosen.
+
+### 9c. PhonePe PG
+
+1. PhonePe Business Dashboard → **Developer Settings** → API keys (use the UAT/test ones first). You get a Client ID, Client Secret and Client Version.
+2. Developer Settings → **Webhooks** → create:
+   - URL: `https://api.mivoplay.fun/api/payments/webhooks/phonepe`
+   - Username and password: make up both
+   - Events: `checkout.order.completed` and `checkout.order.failed`
+3. Render → Environment:
+
+| Key | Value |
+|---|---|
+| `PHONEPE_CLIENT_ID` | Client ID |
+| `PHONEPE_CLIENT_SECRET` | Client Secret |
+| `PHONEPE_CLIENT_VERSION` | Client Version (often `1`) |
+| `PHONEPE_ENV` | `sandbox` for test keys, `production` for live keys |
+| `PHONEPE_WEBHOOK_USERNAME` | the webhook username from step 2 |
+| `PHONEPE_WEBHOOK_PASSWORD` | the webhook password from step 2 |
+
+PhonePe opens its own payment page and then sends the player back to `https://mivoplay.fun/payments/return`. That works automatically as long as `APP_URL` or `CLIENT_URL` is your site address.
+
+### 9d. Check it
+
+After Render restarts, its log shows a line like `Payment options: razorpay, cashfree, phonepe`. Book a paid tournament with a fresh account and pay with each gateway's test method. You should get the pass on screen and by email. If a player pays but closes the tab, the pass still arrives within about a minute (webhook or background check).
+
+To keep the test checkout available next to real gateways (for your own testing only), set `MOCK_PAYMENTS=1`. Remove it before real players arrive.
+
 ## Feature switches
 
 | Key (Render) | Effect |

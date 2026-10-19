@@ -3,6 +3,7 @@ import mongoose from 'mongoose';
 import { config, assertProductionConfig } from './config.js';
 import { createApp } from './app.js';
 import { setupSockets } from './sockets/index.js';
+import { startPaymentReconciler, availableGateways } from './services/payments/index.js';
 
 async function main() {
   assertProductionConfig();
@@ -14,6 +15,8 @@ async function main() {
   const { tournaments } = setupSockets(server);
   app.locals.tournaments = tournaments; // routes use it to delete live tournaments
   await tournaments.startScheduler();
+  const stopReconciler = startPaymentReconciler();
+  console.log(`Payment options: ${availableGateways().map((g) => g.id).join(', ') || 'none'}`);
 
   server.listen(config.port, () => {
     console.log(`MivoPlay API on port ${config.port}`);
@@ -22,6 +25,7 @@ async function main() {
 
   const shutdown = async () => {
     tournaments.stop();
+    stopReconciler();
     server.close();
     await mongoose.disconnect();
     process.exit(0);

@@ -6,7 +6,7 @@ import { GAMES } from '../lib/games';
 import Ticket from '../components/Ticket';
 import { ChangePassword } from './PasswordReset';
 
-const PAY_STATUS = { paid: 'Paid', failed: 'Failed', refund_pending: 'Refund pending', refunded: 'Refunded', created: 'Not completed' };
+const PAY_STATUS = { processing: 'Processing', paid: 'Paid', failed: 'Failed', refund_pending: 'Refund pending', refunded: 'Refunded', created: 'Not completed' };
 
 export default function Me() {
   const { user, loading, refresh } = useAuth();

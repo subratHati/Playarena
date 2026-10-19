@@ -11,6 +11,7 @@ import { requireAuth, requireAdmin, verifyToken, asyncH } from '../middleware/au
 import { newEntryId, newPasskey, newOrderId } from '../services/ids.js';
 import { serializeTournament, serializeRegistration } from '../services/serialize.js';
 import { onBooked, onCancelled } from '../services/tournamentMail.js';
+import { availableGateways } from '../services/payments/index.js';
 
 const router = Router();
 const isId = (id) => mongoose.isValidObjectId(id);
@@ -146,7 +147,7 @@ router.get(
   })
 );
 
-// ---------- Player: checkout (mock payment order) ----------
+// ---------- Player: checkout (creates our order; the player then picks a gateway) ----------
 
 router.post(
   '/:id/checkout',
@@ -175,7 +176,13 @@ router.post(
       return res.status(result.status).json(result.body);
     }
 
-    res.status(201).json({ orderId: payment.orderId, amount: payment.amount, currency: payment.currency, tournament: serializeTournament(t) });
+    res.status(201).json({
+      orderId: payment.orderId,
+      amount: payment.amount,
+      currency: payment.currency,
+      tournament: serializeTournament(t),
+      gateways: availableGateways(),
+    });
   })
 );
 
@@ -298,7 +305,16 @@ export async function completePayment(payment, user, method) {
     const reg = await Registration.findOne({ payment: payment._id });
     return { status: 200, body: { registration: reg ? serializeRegistration(reg) : null } };
   }
+  if (payment.status === 'processing') return { status: 202, body: { pending: true } };
   if (payment.status !== 'created') return { status: 409, body: { error: `Payment is ${payment.status}` } };
+
+  // Claim the payment so a webhook and the browser confirming at the same moment can't both use it.
+  const claimed = await Payment.findOneAndUpdate({ _id: payment._id, status: 'created' }, { $set: { status: 'processing' } }, { new: true });
+  if (!claimed) {
+    const fresh = await Payment.findById(payment._id);
+    Object.assign(payment, { status: fresh?.status });
+    return completePayment(fresh || payment, user, method);
+  }
 
   // Reserve a seat atomically so two last-second payments can't overfill.
   const info = await Tournament.findById(payment.tournament).select('maxPlayers');

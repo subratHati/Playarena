@@ -20,7 +20,12 @@ export function createApp() {
   const smallJson = express.json({ limit: '100kb' });
   const imageJson = express.json({ limit: '4.5mb' }); // up to two pictures (hero banner: computer + phone)
   const carriesImage = (p) => p === '/api/tournaments' || p === '/api/hero/slides' || /^\/api\/hero\/slides\/[a-f0-9]{24}\/update$/.test(p);
-  app.use((req, res, next) => (req.method === 'POST' && carriesImage(req.path) ? imageJson : smallJson)(req, res, next));
+  // Gateway webhooks need the exact raw bytes to check their signatures.
+  const rawBody = express.raw({ type: () => true, limit: '1mb' });
+  app.use((req, res, next) => {
+    if (req.method === 'POST' && req.path.startsWith('/api/payments/webhooks/')) return rawBody(req, res, next);
+    return (req.method === 'POST' && carriesImage(req.path) ? imageJson : smallJson)(req, res, next);
+  });
 
   const signupLimiter = rateLimit({
     windowMs: 60 * 60 * 1000,
