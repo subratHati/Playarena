@@ -34,6 +34,11 @@ export default function PaymentModal({ order: firstOrder, createOrder, tournamen
     dialog.current?.showModal();
   }, []);
 
+    // While our dialog is open as a modal, the browser blocks clicks on everything outside it —
+  // including the gateway's own window. So we step aside while Razorpay/Cashfree is open.
+  const stepAside = () => dialog.current?.open && dialog.current.close();
+  const comeBack = () => dialog.current && !dialog.current.open && dialog.current.showModal();
+
   // A mock order that failed is closed, so a retry starts a fresh one.
   const freshOrder = async () => {
     if (!order.closed) return order;
@@ -81,7 +86,8 @@ export default function PaymentModal({ order: firstOrder, createOrder, tournamen
       }
 
       if (start.gateway === 'razorpay') {
-        const r = await openRazorpay(start);
+        stepAside();
+        const r = await openRazorpay(start).finally(comeBack);
         if (r.dismissed) {
           // Closed the window. A UPI payment may still complete, so check once quietly.
           const d = await api(`/payments/${current.orderId}/confirm`, { method: 'POST', body: {} });
@@ -94,7 +100,8 @@ export default function PaymentModal({ order: firstOrder, createOrder, tournamen
 
       if (start.gateway === 'cashfree') {
         savePending({ orderId: current.orderId, tournamentId: tournament.id, gateway: 'cashfree' });
-        const r = await openCashfree(start);
+        stepAside();
+        const r = await openCashfree(start).finally(comeBack);
         if (r?.redirect) return; // Cashfree is taking the player to its page; they come back to /payments/return
         if (r?.error && !r?.paymentDetails) {
           const d = await api(`/payments/${current.orderId}/confirm`, { method: 'POST', body: {} });
